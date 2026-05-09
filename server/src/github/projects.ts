@@ -1,0 +1,361 @@
+import { graphql } from "@octokit/graphql";
+
+// --- Public types ---
+
+export type User = {
+  login: string;
+  name: string | null;
+  avatarUrl: string;
+};
+
+export type FieldValue =
+  | { kind: "single_select"; optionName: string }
+  | { kind: "text"; text: string }
+  | { kind: "number"; number: number }
+  | { kind: "date"; date: string }
+  | { kind: "iteration"; title: string };
+
+export type ProjectItem = {
+  id: string;
+  contentType: "Issue" | "PullRequest";
+  number: number;
+  title: string;
+  url: string;
+  state: string;
+  assignees: User[];
+  requestedReviewers: User[];
+  fields: Record<string, FieldValue>;
+};
+
+export type ProjectSummary = {
+  number: number;
+  title: string;
+  url: string;
+};
+
+// --- Raw GraphQL response shapes ---
+
+type RawUser = { login: string; name: string | null; avatarUrl: string };
+
+type RawFieldValue = {
+  __typename: string;
+  name?: string;
+  text?: string;
+  number?: number;
+  date?: string;
+  title?: string;
+  field?: { name?: string } | null;
+};
+
+type RawIssueOrPR = {
+  __typename: string;
+  id: string;
+  number: number;
+  title: string;
+  url: string;
+  state: string;
+  assignees: { nodes: RawUser[] };
+  reviewRequests?: {
+    nodes: Array<{
+      requestedReviewer:
+        | (RawUser & { __typename: string })
+        | { __typename: string }
+        | null;
+    }>;
+  };
+};
+
+type RawProjectItem = {
+  id: string;
+  type: string;
+  fieldValues: { nodes: RawFieldValue[] };
+  content: RawIssueOrPR | { __typename: string } | null;
+};
+
+type ListProjectsResponse = {
+  repositoryOwner:
+    | null
+    | {
+        __typename: string;
+        projectsV2?: {
+          pageInfo: { hasNextPage: boolean; endCursor: string | null };
+          nodes: Array<{
+            number: number;
+            title: string;
+            url: string;
+            closed: boolean;
+          }>;
+        };
+      };
+};
+
+type ProjectItemsResponse = {
+  repositoryOwner:
+    | null
+    | {
+        __typename: string;
+        projectV2: {
+          id: string;
+          title: string;
+          items: {
+            pageInfo: { hasNextPage: boolean; endCursor: string | null };
+            nodes: RawProjectItem[];
+          };
+        } | null;
+      };
+};
+
+// --- Queries ---
+
+const LIST_PROJECTS_QUERY = `
+  query ListProjects($owner: String!, $cursor: String) {
+    repositoryOwner(login: $owner) {
+      __typename
+      ... on Organization {
+        projectsV2(first: 100, after: $cursor) {
+          pageInfo { hasNextPage endCursor }
+          nodes { number title url closed }
+        }
+      }
+      ... on User {
+        projectsV2(first: 100, after: $cursor) {
+          pageInfo { hasNextPage endCursor }
+          nodes { number title url closed }
+        }
+      }
+    }
+  }
+`;
+
+const PROJECT_ITEMS_QUERY = `
+  query ProjectItems($owner: String!, $number: Int!, $cursor: String) {
+    repositoryOwner(login: $owner) {
+      __typename
+      ... on Organization {
+        projectV2(number: $number) { ...projectItemsFields }
+      }
+      ... on User {
+        projectV2(number: $number) { ...projectItemsFields }
+      }
+    }
+  }
+
+  fragment projectItemsFields on ProjectV2 {
+    id
+    title
+    items(first: 100, after: $cursor) {
+      pageInfo { hasNextPage endCursor }
+      nodes {
+        id
+        type
+        fieldValues(first: 20) {
+          nodes {
+            __typename
+            ... on ProjectV2ItemFieldSingleSelectValue {
+              name
+              field { ... on ProjectV2FieldCommon { name } }
+            }
+            ... on ProjectV2ItemFieldTextValue {
+              text
+              field { ... on ProjectV2FieldCommon { name } }
+            }
+            ... on ProjectV2ItemFieldNumberValue {
+              number
+              field { ... on ProjectV2FieldCommon { name } }
+            }
+            ... on ProjectV2ItemFieldDateValue {
+              date
+              field { ... on ProjectV2FieldCommon { name } }
+            }
+            ... on ProjectV2ItemFieldIterationValue {
+              title
+              field { ... on ProjectV2FieldCommon { name } }
+            }
+          }
+        }
+        content {
+          __typename
+          ... on Issue {
+            id
+            number
+            title
+            url
+            state
+            assignees(first: 10) { nodes { login name avatarUrl } }
+          }
+          ... on PullRequest {
+            id
+            number
+            title
+            url
+            state
+            assignees(first: 10) { nodes { login name avatarUrl } }
+            reviewRequests(first: 10) {
+              nodes {
+                requestedReviewer {
+                  __typename
+                  ... on User { login name avatarUrl }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+// --- Client ---
+
+function makeClient(token: string) {
+  return graphql.defaults({
+    headers: { authorization: `token ${token}` },
+  });
+}
+
+// --- Public API ---
+
+export async function listProjects(
+  token: string,
+  owner: string,
+): Promise<ProjectSummary[]> {
+  const client = makeClient(token);
+  const out: ProjectSummary[] = [];
+  let cursor: string | null = null;
+  while (true) {
+    const data: ListProjectsResponse = await client(LIST_PROJECTS_QUERY, {
+      owner,
+      cursor,
+    });
+    if (!data.repositoryOwner) {
+      throw new Error(`Owner not found on github.com: ${owner}`);
+    }
+    const conn = data.repositoryOwner.projectsV2;
+    if (!conn) return [];
+    for (const p of conn.nodes) {
+      if (!p.closed) {
+        out.push({ number: p.number, title: p.title, url: p.url });
+      }
+    }
+    if (!conn.pageInfo.hasNextPage) break;
+    cursor = conn.pageInfo.endCursor;
+  }
+  return out;
+}
+
+export async function getProjectItems(
+  token: string,
+  owner: string,
+  projectNumber: number,
+): Promise<ProjectItem[]> {
+  const client = makeClient(token);
+  const out: ProjectItem[] = [];
+  let cursor: string | null = null;
+  while (true) {
+    const data: ProjectItemsResponse = await client(PROJECT_ITEMS_QUERY, {
+      owner,
+      number: projectNumber,
+      cursor,
+    });
+    if (!data.repositoryOwner) {
+      throw new Error(`Owner not found on github.com: ${owner}`);
+    }
+    const project = data.repositoryOwner.projectV2;
+    if (!project) {
+      throw new Error(
+        `Project #${projectNumber} not found for owner ${owner}.`,
+      );
+    }
+    for (const node of project.items.nodes) {
+      const resolved = resolveItem(node);
+      if (resolved) out.push(resolved);
+    }
+    if (!project.items.pageInfo.hasNextPage) break;
+    cursor = project.items.pageInfo.endCursor;
+  }
+  return out;
+}
+
+// --- Resolution ---
+
+function resolveItem(node: RawProjectItem): ProjectItem | null {
+  if (!node.content) {
+    console.warn(
+      `[projects] skipping item ${node.id}: content unavailable (type=${node.type})`,
+    );
+    return null;
+  }
+  const tn = node.content.__typename;
+  if (tn !== "Issue" && tn !== "PullRequest") {
+    console.warn(
+      `[projects] skipping item ${node.id}: content type is ${tn} (not Issue or PullRequest)`,
+    );
+    return null;
+  }
+  const c = node.content as RawIssueOrPR;
+  const requestedReviewers: User[] =
+    tn === "PullRequest"
+      ? (c.reviewRequests?.nodes ?? [])
+          .map((rr) => rr.requestedReviewer)
+          .filter(
+            (rr): rr is RawUser & { __typename: string } =>
+              !!rr && rr.__typename === "User" && "login" in rr,
+          )
+          .map(toUser)
+      : [];
+  return {
+    id: node.id,
+    contentType: tn,
+    number: c.number,
+    title: c.title,
+    url: c.url,
+    state: c.state,
+    assignees: c.assignees.nodes.map(toUser),
+    requestedReviewers,
+    fields: extractFields(node.fieldValues.nodes),
+  };
+}
+
+function toUser(u: RawUser): User {
+  return { login: u.login, name: u.name, avatarUrl: u.avatarUrl };
+}
+
+function extractFields(
+  nodes: RawFieldValue[],
+): Record<string, FieldValue> {
+  const out: Record<string, FieldValue> = {};
+  for (const fv of nodes) {
+    const fieldName = fv.field?.name;
+    if (!fieldName) continue;
+    switch (fv.__typename) {
+      case "ProjectV2ItemFieldSingleSelectValue":
+        if (fv.name) {
+          out[fieldName] = { kind: "single_select", optionName: fv.name };
+        }
+        break;
+      case "ProjectV2ItemFieldTextValue":
+        if (fv.text != null) {
+          out[fieldName] = { kind: "text", text: fv.text };
+        }
+        break;
+      case "ProjectV2ItemFieldNumberValue":
+        if (fv.number != null) {
+          out[fieldName] = { kind: "number", number: fv.number };
+        }
+        break;
+      case "ProjectV2ItemFieldDateValue":
+        if (fv.date) {
+          out[fieldName] = { kind: "date", date: fv.date };
+        }
+        break;
+      case "ProjectV2ItemFieldIterationValue":
+        if (fv.title) {
+          out[fieldName] = { kind: "iteration", title: fv.title };
+        }
+        break;
+      // Other field types (Labels, Users, Milestone, etc.) intentionally
+      // ignored; add cases here when a new field type is needed.
+    }
+  }
+  return out;
+}
