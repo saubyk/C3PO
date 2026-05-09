@@ -1,0 +1,19 @@
+{
+  "name": "c3po",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Local web app that reorganizes a GitHub Project board around team members.",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "start": "LOG_LEVEL=info concurrently --raw \"npm:dev --workspace=server\" \"npm:dev --workspace=web\"",
+    "start:debug": "LOG_LEVEL=debug concurrently -n server,web -c blue,magenta \"npm:dev --workspace=server\" \"npm:dev --workspace=web\"",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
