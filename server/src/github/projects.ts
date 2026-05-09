@@ -1,4 +1,5 @@
 import { graphql } from "@octokit/graphql";
+import { NotFoundError } from "../errors.js";
 
 // --- Public types ---
 
@@ -28,6 +29,7 @@ export type ProjectItem = {
 };
 
 export type ProjectSummary = {
+  owner: string;
   number: number;
   title: string;
   url: string;
@@ -72,21 +74,36 @@ type RawProjectItem = {
   content: RawIssueOrPR | { __typename: string } | null;
 };
 
-type ListProjectsResponse = {
-  repositoryOwner:
-    | null
-    | {
-        __typename: string;
-        projectsV2?: {
-          pageInfo: { hasNextPage: boolean; endCursor: string | null };
-          nodes: Array<{
-            number: number;
-            title: string;
-            url: string;
-            closed: boolean;
-          }>;
-        };
-      };
+type ProjectNode = {
+  number: number;
+  title: string;
+  url: string;
+  closed: boolean;
+};
+
+type ProjectsConnection = {
+  pageInfo: { hasNextPage: boolean; endCursor: string | null };
+  nodes: ProjectNode[];
+};
+
+type ViewerProjectsResponse = {
+  viewer: {
+    login: string;
+    projectsV2: ProjectsConnection;
+  };
+};
+
+type ViewerOrgsResponse = {
+  viewer: {
+    organizations: {
+      pageInfo: { hasNextPage: boolean; endCursor: string | null };
+      nodes: Array<{ login: string }>;
+    };
+  };
+};
+
+type OrgProjectsResponse = {
+  organization: { projectsV2: ProjectsConnection } | null;
 };
 
 type ProjectItemsResponse = {
@@ -107,21 +124,35 @@ type ProjectItemsResponse = {
 
 // --- Queries ---
 
-const LIST_PROJECTS_QUERY = `
-  query ListProjects($owner: String!, $cursor: String) {
-    repositoryOwner(login: $owner) {
-      __typename
-      ... on Organization {
-        projectsV2(first: 100, after: $cursor) {
-          pageInfo { hasNextPage endCursor }
-          nodes { number title url closed }
-        }
+const VIEWER_PROJECTS_QUERY = `
+  query ViewerProjects($cursor: String) {
+    viewer {
+      login
+      projectsV2(first: 100, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes { number title url closed }
       }
-      ... on User {
-        projectsV2(first: 100, after: $cursor) {
-          pageInfo { hasNextPage endCursor }
-          nodes { number title url closed }
-        }
+    }
+  }
+`;
+
+const VIEWER_ORGS_QUERY = `
+  query ViewerOrgs($cursor: String) {
+    viewer {
+      organizations(first: 100, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes { login }
+      }
+    }
+  }
+`;
+
+const ORG_PROJECTS_QUERY = `
+  query OrgProjects($owner: String!, $cursor: String) {
+    organization(login: $owner) {
+      projectsV2(first: 100, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
+        nodes { number title url closed }
       }
     }
   }
@@ -215,30 +246,86 @@ function makeClient(token: string) {
 
 // --- Public API ---
 
-export async function listProjects(
-  token: string,
+export async function listProjects(token: string): Promise<ProjectSummary[]> {
+  const client = makeClient(token);
+  const out: ProjectSummary[] = [];
+
+  // 1. Viewer's identity + personal projects.
+  let viewerLogin = "";
+  let cursor: string | null = null;
+  while (true) {
+    const data: ViewerProjectsResponse = await client(VIEWER_PROJECTS_QUERY, {
+      cursor,
+    });
+    viewerLogin = data.viewer.login;
+    for (const p of data.viewer.projectsV2.nodes) {
+      if (!p.closed) {
+        out.push({
+          owner: viewerLogin,
+          number: p.number,
+          title: p.title,
+          url: p.url,
+        });
+      }
+    }
+    if (!data.viewer.projectsV2.pageInfo.hasNextPage) break;
+    cursor = data.viewer.projectsV2.pageInfo.endCursor;
+  }
+
+  // 2. Orgs the viewer belongs to.
+  const orgLogins: string[] = [];
+  cursor = null;
+  while (true) {
+    const data: ViewerOrgsResponse = await client(VIEWER_ORGS_QUERY, {
+      cursor,
+    });
+    for (const org of data.viewer.organizations.nodes) {
+      orgLogins.push(org.login);
+    }
+    if (!data.viewer.organizations.pageInfo.hasNextPage) break;
+    cursor = data.viewer.organizations.pageInfo.endCursor;
+  }
+
+  // 3. Per-org projects, in parallel. Skip orgs we can't read with a warning
+  // rather than failing the whole list.
+  const results = await Promise.allSettled(
+    orgLogins.map((login) => fetchOrgProjects(client, login)),
+  );
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i];
+    if (r?.status === "fulfilled") {
+      out.push(...r.value);
+    } else if (r?.status === "rejected") {
+      const reason =
+        r.reason instanceof Error ? r.reason.message : String(r.reason);
+      console.warn(
+        `[projects] could not list projects for org ${orgLogins[i]}: ${reason}`,
+      );
+    }
+  }
+
+  return out;
+}
+
+async function fetchOrgProjects(
+  client: ReturnType<typeof makeClient>,
   owner: string,
 ): Promise<ProjectSummary[]> {
-  const client = makeClient(token);
   const out: ProjectSummary[] = [];
   let cursor: string | null = null;
   while (true) {
-    const data: ListProjectsResponse = await client(LIST_PROJECTS_QUERY, {
+    const data: OrgProjectsResponse = await client(ORG_PROJECTS_QUERY, {
       owner,
       cursor,
     });
-    if (!data.repositoryOwner) {
-      throw new Error(`Owner not found on github.com: ${owner}`);
-    }
-    const conn = data.repositoryOwner.projectsV2;
-    if (!conn) return [];
-    for (const p of conn.nodes) {
+    if (!data.organization) return out;
+    for (const p of data.organization.projectsV2.nodes) {
       if (!p.closed) {
-        out.push({ number: p.number, title: p.title, url: p.url });
+        out.push({ owner, number: p.number, title: p.title, url: p.url });
       }
     }
-    if (!conn.pageInfo.hasNextPage) break;
-    cursor = conn.pageInfo.endCursor;
+    if (!data.organization.projectsV2.pageInfo.hasNextPage) break;
+    cursor = data.organization.projectsV2.pageInfo.endCursor;
   }
   return out;
 }
@@ -258,11 +345,11 @@ export async function getProjectItems(
       cursor,
     });
     if (!data.repositoryOwner) {
-      throw new Error(`Owner not found on github.com: ${owner}`);
+      throw new NotFoundError(`Owner not found on github.com: ${owner}`);
     }
     const project = data.repositoryOwner.projectV2;
     if (!project) {
-      throw new Error(
+      throw new NotFoundError(
         `Project #${projectNumber} not found for owner ${owner}.`,
       );
     }

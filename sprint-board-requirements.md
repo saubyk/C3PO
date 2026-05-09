@@ -64,7 +64,7 @@ The app pulls live data from one or more GitHub Projects (and the underlying iss
 
 ### 5.1 Data sources
 
-- **FR-1.** The app pulls data from a single configured GitHub organization or user account at a time.
+- **FR-1.** The app uses the authenticated user's identity (derived from the PAT) to discover every Projects v2 board they can read — across their personal account and every organization they belong to. There is no separate "configured owner"; one token is enough.
 - **FR-2.** The app supports selecting one GitHub Project (Projects v2) at a time as the active view. The list of available projects is fetched on startup.
 - **FR-3.** For the active project, the app fetches every project item and resolves it to its underlying issue or pull request, including: title, number, type (issue/PR), state (open/closed/merged), assignees, requested reviewers (PRs only), and the project-level fields **Status**, **Priority**, and **Size** (and any other custom single-select fields, displayed generically).
 - **FR-4.** The app fetches the list of "team members" as the **union of all assignees and requested reviewers** appearing in the active project. (No separate team configuration is needed for v1; teams are inferred from project participation.)
@@ -100,7 +100,7 @@ The app pulls live data from one or more GitHub Projects (and the underlying iss
 
 ### 5.4 Project switching
 
-- **FR-15.** A dropdown in the header lists every Projects v2 board the authenticated user can read in the configured org/account. Switching projects re-runs the full fetch.
+- **FR-15.** A dropdown in the header lists every Projects v2 board the authenticated user can read across their personal account and every organization they belong to, grouped by owner. The most recently selected project is remembered locally (browser `localStorage`) and preselected on next launch. Switching projects re-runs the full fetch.
 
 ---
 
@@ -127,18 +127,17 @@ The simplest, most reliable path for a locally-served PM tool is a **GitHub fine
 
 ### Required token permissions (fine-grained PAT)
 
-For the configured organization/account:
+For each organization whose projects the user wants to browse (and the user's personal account, if relevant):
 
 - **Repository permissions:** `Issues: Read`, `Pull requests: Read`, `Metadata: Read` (auto-included).
-- **Organization permissions:** `Projects: Read`.
-- **Account permissions:** none required.
+- **Organization permissions:** `Projects: Read`, plus `Members: Read` so the app can enumerate orgs the user belongs to.
+- **Account permissions:** `Projects: Read` if the user has personal Projects v2 boards.
 
 ### Setup flow
 
 1. User runs `npm install` (or equivalent) and copies `.env.example` to `.env`.
 2. User visits `https://github.com/settings/personal-access-tokens/new`, generates a fine-grained PAT with the scopes above, and pastes it into `GITHUB_TOKEN=` in `.env`.
-3. User sets `GITHUB_OWNER=lightningnetwork` (or their org/user).
-4. User runs `npm start`. The app reads the token from the environment and never sends it to any third party.
+3. User runs `npm start`. The app reads the token from the environment and never sends it to any third party.
 
 ### Why not OAuth or a GitHub App in v1
 
@@ -158,7 +157,7 @@ For the configured organization/account:
 
 These are starting suggestions; the implementing team should feel free to substitute equivalents.
 
-- **Backend:** Node.js + Express (or Fastify). Single process serving the API and the static frontend on `http://localhost:3000`.
+- **Backend:** Node.js + Express (or Fastify). The Express API listens on `http://localhost:5173`; the Vite dev server runs on `http://localhost:3263` and proxies `/api/*` to the Express port. The browser only ever talks to `3263`.
 - **GitHub client:** `@octokit/graphql` for Projects v2 (GraphQL is the only supported API for v2 fields) and `@octokit/rest` for any supplemental REST calls.
 - **Frontend:** React + Vite. Lightweight state via React Query (handles caching, refetch, and stale indicators out of the box).
 - **Styling:** Tailwind CSS for speed; aim for visual parity with the reference screenshot.

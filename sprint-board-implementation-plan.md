@@ -28,14 +28,14 @@ A reasonable cadence is one milestone per evening session for M1–M3, two sessi
 ### Tasks
 
 1. Initialize the repo with two workspaces: `server/` (Express + TS) and `web/` (Vite + React + TS). A monorepo with `npm` workspaces is fine; nothing fancier is needed.
-2. Add `.gitignore`, `.env.example`, `README.md`. The `.env.example` should list `GITHUB_TOKEN`, `GITHUB_OWNER`, and `PORT`.
+2. Add `.gitignore`, `.env.example`, `README.md`. The `.env.example` should list `GITHUB_TOKEN` and `PORT`. (No separate owner config — the token's identity is enough; the app discovers everything visible to the viewer.)
 3. In `server/`, install `@octokit/graphql`, `@octokit/rest`, `dotenv`, `express`, `cors`. Wire up a single endpoint `GET /api/health` that calls GitHub's `viewer { login }` query and returns `{ status: "ok", login }`.
 4. In `web/`, scaffold a one-page React app that calls `/api/health` on load and renders "Connected as @yourlogin." Configure Vite's dev server to proxy `/api` to the Express port.
 5. Add an `npm start` script at the root that runs both servers concurrently (`concurrently` package is fine).
 
 ### Deliverable
 
-`npm start`, open `http://localhost:5173`, see "Connected as @yourlogin."
+`npm start`, open `http://localhost:3263`, see "Connected as @yourlogin." (Vite serves the app on `3263` and proxies `/api` to the Express server on `5173`.)
 
 ### Verification
 
@@ -57,8 +57,8 @@ A reasonable cadence is one milestone per evening session for M1–M3, two sessi
 ### Tasks
 
 1. Write `server/src/github/projects.ts` with:
-   - `listProjects(owner)` → `{ number, title, url }[]`. Works for both org-owned and user-owned projects; detect which by trying `organization { projectsV2 }` first, falling back to `user { projectsV2 }`.
-   - `getProjectItems(owner, projectNumber)` → fully paginated list of items.
+   - `listProjects(token)` → `{ owner, number, title, url }[]`. Aggregates Projects v2 boards across the viewer's personal account and every organization the viewer belongs to. Three paginated GraphQL calls: viewer's personal projects, viewer's organizations, then per-org projects (the per-org calls run in parallel).
+   - `getProjectItems(token, owner, projectNumber)` → fully paginated list of items for one specific (owner, number).
 2. Define TypeScript types for the returned shape. Each item should expose: `id`, `contentType` (`Issue` | `PullRequest`), `number`, `title`, `url`, `state`, `assignees: User[]`, `requestedReviewers: User[]` (PRs only, empty for issues), and a `fields` map keyed by field name (`Status`, `Priority`, `Size`, plus any other custom single-selects).
 3. Handle pagination with cursors. Don't try to be clever; a `while (hasNextPage)` loop is correct.
 4. Add a CLI script `server/scripts/dump-project.ts` that takes an org and project number on the command line and prints the resolved items as JSON. **This script is the artifact** — it's how you verify everything works before any UI exists.
@@ -91,16 +91,16 @@ $ npx tsx server/scripts/dump-project.ts lightningnetwork 1
 ### Tasks
 
 1. Add three endpoints:
-   - `GET /api/projects` → list of projects.
-   - `GET /api/projects/:number/items` → all resolved items.
-   - `GET /api/projects/:number/team` → derived list of team members (the union of all assignees and requested reviewers across the project's items).
+   - `GET /api/projects` → list of projects (`{ owner, number, title, url }[]`) aggregated across the viewer's personal account and every organization they belong to.
+   - `GET /api/projects/:owner/:number/items` → all resolved items for one project. Owner is in the URL because the app can see projects from many owners.
+   - `GET /api/projects/:owner/:number/team` → derived list of team members (the union of all assignees and requested reviewers across the project's items).
 2. Add an in-memory cache with a 90-second TTL. Cache key is the endpoint + params. A `?refresh=1` query param bypasses the cache.
 3. Handle GitHub rate limits explicitly: catch the error, return HTTP 429 with a JSON body containing `resetAt`. The frontend will surface this later.
 4. Add structured logging (`pino` is fine) so you can see request timings during development.
 
 ### Deliverable
 
-`curl http://localhost:3000/api/projects/1/items | jq '. | length'` returns the expected count.
+`curl http://localhost:5173/api/projects/lightningnetwork/19/items | jq '. | length'` returns the expected count.
 
 ### Verification
 
