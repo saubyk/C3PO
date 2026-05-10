@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useOutletContext } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import { Group, Panel, Separator, type Layout } from "react-resizable-panels";
+import type { AppOutletContext } from "../App";
 import { ApiError, useItems, useProjects } from "../api";
 import { Header } from "../components/Header";
 import { AssigneeList } from "../components/AssigneeList";
@@ -27,6 +29,8 @@ const ACTIVE_PROJECT_KEY = "c3po-active-project";
 
 export default function SprintBoardRoute() {
   const queryClient = useQueryClient();
+  const { boardSelectedLogin, setBoardSelectedLogin } =
+    useOutletContext<AppOutletContext>();
 
   const [activeProject, setActiveProjectState] =
     useState<ActiveProject | null>(loadActiveProject);
@@ -76,7 +80,8 @@ export default function SprintBoardRoute() {
     verifiedActive?.number ?? null,
   );
 
-  const [selectedLogin, setSelectedLogin] = useState<string | null>(null);
+  const selectedLogin = boardSelectedLogin;
+  const setSelectedLogin = setBoardSelectedLogin;
   const [statusFilter, setStatusFilter] = useState<string>(HIDE_DONE);
   const [priorityFilter, setPriorityFilter] = useState<string>(ALL);
   const [assignedSearch, setAssignedSearch] = useState("");
@@ -87,7 +92,7 @@ export default function SprintBoardRoute() {
     setSelectedLogin(null);
     setAssignedSearch("");
     setReviewSearch("");
-  }, [verifiedActive?.owner, verifiedActive?.number]);
+  }, [verifiedActive?.owner, verifiedActive?.number, setSelectedLogin]);
 
   const allItems = items.data ?? [];
   const filtered = useMemo(

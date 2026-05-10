@@ -1,5 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import type { ProjectItem, ProjectSummary, TeamMember } from "./types";
+import type {
+  ProjectItem,
+  ProjectSummary,
+  RosterResponse,
+  TeamMember,
+  WorkloadResponse,
+} from "./types";
 
 export class ApiError extends Error {
   status: number;
@@ -66,5 +72,20 @@ export function useHealth() {
   return useQuery<Health>({
     queryKey: ["health"],
     queryFn: () => fetchJson("/api/health"),
+  });
+}
+
+export function useWorkloadRoster() {
+  return useQuery<RosterResponse>({
+    queryKey: ["workload", "roster"],
+    queryFn: () => fetchJson("/api/workload/roster"),
+  });
+}
+
+export function useDeveloperWorkload(login: string | null) {
+  return useQuery<WorkloadResponse>({
+    queryKey: ["workload", "developer", login],
+    enabled: login !== null,
+    queryFn: () => fetchJson(`/api/workload/${login}`),
   });
 }

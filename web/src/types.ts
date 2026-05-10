@@ -42,3 +42,40 @@ export type ProjectSummary = {
   title: string;
   url: string;
 };
+
+// --- Workload (v0.2) ---
+
+export type RosterUser = {
+  login: string;
+  avatarUrl: string;
+};
+
+export type RosterWarning = {
+  team: string;
+  reason: string;
+};
+
+export type RosterResponse = {
+  orgs: string[];
+  roster: RosterUser[];
+  warnings: RosterWarning[];
+  configErrors: string[];
+};
+
+export type RepoCount = {
+  repo: string;
+  count: number;
+};
+
+export type WorkloadWarning = {
+  query: string;
+  reason: string;
+};
+
+export type WorkloadResponse = {
+  login: string;
+  orgs: string[];
+  assigned: RepoCount[];
+  reviewing: RepoCount[];
+  warnings: WorkloadWarning[];
+};

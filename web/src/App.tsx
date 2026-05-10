@@ -1,9 +1,23 @@
+import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useHealth } from "./api";
+
+// Shared state available to every route via useOutletContext.
+// `boardSelectedLogin` is owned by the Sprint Board route; the Workload route
+// reads it (once, on mount) to seed its own picker — see FR-W4 / FR-W10.
+export type AppOutletContext = {
+  boardSelectedLogin: string | null;
+  setBoardSelectedLogin: (login: string | null) => void;
+};
 
 export default function App() {
   const { data } = useHealth();
   const login = data?.status === "ok" ? data.login : null;
+  const [boardSelectedLogin, setBoardSelectedLogin] = useState<string | null>(
+    null,
+  );
+
+  const ctx: AppOutletContext = { boardSelectedLogin, setBoardSelectedLogin };
 
   return (
     <main className="h-screen flex flex-col bg-white text-gray-900">
@@ -18,7 +32,7 @@ export default function App() {
           </span>
         )}
       </nav>
-      <Outlet />
+      <Outlet context={ctx} />
     </main>
   );
 }
