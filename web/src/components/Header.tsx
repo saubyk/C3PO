@@ -1,5 +1,4 @@
 import { RefreshCw } from "lucide-react";
-import { useHealth } from "../api";
 import type { ProjectSummary } from "../types";
 import { ProjectSwitcher, type ActiveProject } from "./ProjectSwitcher";
 
@@ -19,13 +18,8 @@ type Props = {
 };
 
 export function Header(props: Props) {
-  const { data } = useHealth();
-  const login = data?.status === "ok" ? data.login : null;
-
   return (
     <header className="flex items-center gap-3 border-b border-gray-200 px-4 h-10 bg-white shrink-0">
-      <h1 className="font-semibold text-gray-900">C3PO</h1>
-      <span className="text-gray-300">·</span>
       <ProjectSwitcher
         projects={props.projects}
         active={props.activeProject}
@@ -65,7 +59,6 @@ export function Header(props: Props) {
             ? formatHHMM(props.lastUpdated)
             : <span aria-hidden="true">—</span>}
         </span>
-        {login && <span className="font-mono">@{login}</span>}
       </span>
     </header>
   );

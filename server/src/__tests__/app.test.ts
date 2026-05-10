@@ -9,6 +9,12 @@ import {
   type ProjectItem,
   type ProjectSummary,
 } from "../github/projects.js";
+import {
+  loadRoster,
+  loadDeveloperWorkload,
+  type RosterResponse,
+  type WorkloadResponse,
+} from "../workload/service.js";
 
 vi.mock("../github/projects.js", () => ({
   listProjects: vi.fn(),
@@ -19,8 +25,15 @@ vi.mock("../github.js", () => ({
   fetchViewerLogin: vi.fn(),
 }));
 
+vi.mock("../workload/service.js", () => ({
+  loadRoster: vi.fn(),
+  loadDeveloperWorkload: vi.fn(),
+}));
+
 const mockedList = vi.mocked(listProjects);
 const mockedItems = vi.mocked(getProjectItems);
+const mockedRoster = vi.mocked(loadRoster);
+const mockedWorkload = vi.mocked(loadDeveloperWorkload);
 
 const PROJECTS: ProjectSummary[] = [
   {
@@ -83,11 +96,33 @@ beforeAll(() => {
   process.env.LOG_LEVEL = "silent";
 });
 
+const ROSTER: RosterResponse = {
+  orgs: ["lightningnetwork", "lightninglabs"],
+  roster: [
+    { login: "alice", avatarUrl: "https://x/a" },
+    { login: "bob", avatarUrl: "https://x/b" },
+  ],
+  warnings: [],
+  configErrors: [],
+};
+
+const WORKLOAD_ALICE: WorkloadResponse = {
+  login: "alice",
+  orgs: ["lightningnetwork", "lightninglabs"],
+  assigned: [{ repo: "lightningnetwork/lnd", count: 6 }],
+  reviewing: [{ repo: "lightningnetwork/lnd", count: 2 }],
+  warnings: [],
+};
+
 beforeEach(() => {
   mockedList.mockReset();
   mockedItems.mockReset();
+  mockedRoster.mockReset();
+  mockedWorkload.mockReset();
   mockedList.mockResolvedValue(PROJECTS);
   mockedItems.mockResolvedValue(ITEMS);
+  mockedRoster.mockResolvedValue(ROSTER);
+  mockedWorkload.mockResolvedValue(WORKLOAD_ALICE);
 });
 
 function makeApp() {
@@ -169,6 +204,66 @@ describe("/api/projects/:owner/:number/team", () => {
     await request(app).get("/api/projects/test-owner/19/items").expect(200);
     await request(app).get("/api/projects/test-owner/19/team").expect(200);
     expect(mockedItems).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("/api/workload/roster", () => {
+  it("returns the resolved roster", async () => {
+    const res = await request(makeApp()).get("/api/workload/roster").expect(200);
+    expect(res.body).toEqual(ROSTER);
+    expect(mockedRoster).toHaveBeenCalledTimes(1);
+    expect(mockedRoster).toHaveBeenCalledWith("test-token", process.env.WORKLOAD_TEAMS);
+  });
+
+  it("serves the second call from cache", async () => {
+    const app = makeApp();
+    await request(app).get("/api/workload/roster").expect(200);
+    await request(app).get("/api/workload/roster").expect(200);
+    expect(mockedRoster).toHaveBeenCalledTimes(1);
+  });
+
+  it("?refresh=1 bypasses the cache", async () => {
+    const app = makeApp();
+    await request(app).get("/api/workload/roster").expect(200);
+    await request(app).get("/api/workload/roster?refresh=1").expect(200);
+    expect(mockedRoster).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("/api/workload/:login", () => {
+  it("returns the developer workload and forwards orgs from the cached roster", async () => {
+    const res = await request(makeApp()).get("/api/workload/alice").expect(200);
+    expect(res.body).toEqual(WORKLOAD_ALICE);
+    expect(mockedWorkload).toHaveBeenCalledWith(
+      "test-token",
+      "alice",
+      ROSTER.orgs,
+    );
+  });
+
+  it("rejects an invalid login with 400", async () => {
+    const res = await request(makeApp())
+      .get("/api/workload/has--bad..chars")
+      .expect(400);
+    expect(res.body.error).toMatch(/invalid login/i);
+    expect(mockedWorkload).not.toHaveBeenCalled();
+  });
+
+  it("shares the roster cache so a roster + login call resolves teams once", async () => {
+    const app = makeApp();
+    await request(app).get("/api/workload/roster").expect(200);
+    await request(app).get("/api/workload/alice").expect(200);
+    expect(mockedRoster).toHaveBeenCalledTimes(1);
+  });
+
+  it("caches per login — different logins don't collide", async () => {
+    mockedWorkload
+      .mockResolvedValueOnce(WORKLOAD_ALICE)
+      .mockResolvedValueOnce({ ...WORKLOAD_ALICE, login: "bob" });
+    const app = makeApp();
+    await request(app).get("/api/workload/alice").expect(200);
+    await request(app).get("/api/workload/bob").expect(200);
+    expect(mockedWorkload).toHaveBeenCalledTimes(2);
   });
 });
 

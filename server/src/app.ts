@@ -18,6 +18,12 @@ import {
   type ProjectSummary,
   type User,
 } from "./github/projects.js";
+import {
+  loadRoster,
+  loadDeveloperWorkload,
+  type RosterResponse,
+  type WorkloadResponse,
+} from "./workload/service.js";
 
 const TTL_MS = 90_000;
 
@@ -98,6 +104,42 @@ export function createApp(deps: AppDeps = {}) {
     res.json(deriveTeam(items));
   }));
 
+  app.get("/api/workload/roster", asyncHandler(async (req, res) => {
+    const token = requireToken();
+    const refresh = req.query.refresh === "1";
+    const roster = await getOrFetch<RosterResponse>(
+      cache,
+      "workload:roster",
+      refresh,
+      res,
+      () => loadRoster(token, process.env.WORKLOAD_TEAMS),
+    );
+    res.json(roster);
+  }));
+
+  app.get("/api/workload/:login", asyncHandler(async (req, res) => {
+    const token = requireToken();
+    const login = requireLoginParam(req.params.login);
+    const refresh = req.query.refresh === "1";
+    // Workload depends on the roster's resolved orgs; fetch (or reuse) the
+    // roster first so a single restart re-resolves both.
+    const roster = await getOrFetch<RosterResponse>(
+      cache,
+      "workload:roster",
+      refresh,
+      res,
+      () => loadRoster(token, process.env.WORKLOAD_TEAMS),
+    );
+    const workload = await getOrFetch<WorkloadResponse>(
+      cache,
+      `workload:login:${login}`,
+      refresh,
+      res,
+      () => loadDeveloperWorkload(token, login, roster.orgs),
+    );
+    res.json(workload);
+  }));
+
   // Centralised error mapping.
   app.use(
     (err: unknown, req: Request, res: Response, _next: NextFunction) => {
@@ -158,6 +200,15 @@ function requireOwnerParam(raw: string | string[] | undefined): string {
   const v = Array.isArray(raw) ? raw[0] : raw;
   if (!v || !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(v)) {
     throw new BadRequestError(`Invalid owner: ${v ?? "(empty)"}`);
+  }
+  return v;
+}
+
+// GitHub usernames follow the same shape as org logins for our purposes.
+function requireLoginParam(raw: string | string[] | undefined): string {
+  const v = Array.isArray(raw) ? raw[0] : raw;
+  if (!v || !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/.test(v)) {
+    throw new BadRequestError(`Invalid login: ${v ?? "(empty)"}`);
   }
   return v;
 }
