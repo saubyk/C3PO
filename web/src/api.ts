@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { ProjectItem, TeamMember } from "./types";
+import type { ProjectItem, ProjectSummary, TeamMember } from "./types";
 
 // Hardcoded for M4. The project switcher arrives in M6.
 export const ACTIVE_PROJECT = {
@@ -20,6 +20,13 @@ async function fetchJson<T>(url: string): Promise<T> {
     throw new Error(detail);
   }
   return (await res.json()) as T;
+}
+
+export function useProjects() {
+  return useQuery<ProjectSummary[]>({
+    queryKey: ["projects"],
+    queryFn: () => fetchJson("/api/projects"),
+  });
 }
 
 export function useItems(owner: string, number: number) {

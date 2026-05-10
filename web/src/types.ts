@@ -30,3 +30,10 @@ export type TeamMember = User & {
   assignedCount: number;
   reviewingCount: number;
 };
+
+export type ProjectSummary = {
+  owner: string;
+  number: number;
+  title: string;
+  url: string;
+};
