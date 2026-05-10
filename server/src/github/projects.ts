@@ -9,12 +9,17 @@ export type User = {
   avatarUrl: string;
 };
 
-export type FieldValue =
+type FieldValueData =
   | { kind: "single_select"; optionName: string }
   | { kind: "text"; text: string }
   | { kind: "number"; number: number }
   | { kind: "date"; date: string }
   | { kind: "iteration"; title: string };
+
+// `updatedAt` is when this *specific field* was last changed for this item —
+// e.g. when Status moved from Backlog to In progress. Used by the UI to
+// surface stale items.
+export type FieldValue = FieldValueData & { updatedAt: string | null };
 
 export type ProjectItem = {
   id: string;
@@ -46,6 +51,7 @@ type RawFieldValue = {
   number?: number;
   date?: string;
   title?: string;
+  updatedAt?: string;
   field?: { name?: string } | null;
 };
 
@@ -184,22 +190,27 @@ const PROJECT_ITEMS_QUERY = `
             __typename
             ... on ProjectV2ItemFieldSingleSelectValue {
               name
+              updatedAt
               field { ... on ProjectV2FieldCommon { name } }
             }
             ... on ProjectV2ItemFieldTextValue {
               text
+              updatedAt
               field { ... on ProjectV2FieldCommon { name } }
             }
             ... on ProjectV2ItemFieldNumberValue {
               number
+              updatedAt
               field { ... on ProjectV2FieldCommon { name } }
             }
             ... on ProjectV2ItemFieldDateValue {
               date
+              updatedAt
               field { ... on ProjectV2FieldCommon { name } }
             }
             ... on ProjectV2ItemFieldIterationValue {
               title
+              updatedAt
               field { ... on ProjectV2FieldCommon { name } }
             }
           }
@@ -414,30 +425,43 @@ function extractFields(
   for (const fv of nodes) {
     const fieldName = fv.field?.name;
     if (!fieldName) continue;
+    const updatedAt = fv.updatedAt ?? null;
     switch (fv.__typename) {
       case "ProjectV2ItemFieldSingleSelectValue":
         if (fv.name) {
-          out[fieldName] = { kind: "single_select", optionName: fv.name };
+          out[fieldName] = {
+            kind: "single_select",
+            optionName: fv.name,
+            updatedAt,
+          };
         }
         break;
       case "ProjectV2ItemFieldTextValue":
         if (fv.text != null) {
-          out[fieldName] = { kind: "text", text: fv.text };
+          out[fieldName] = { kind: "text", text: fv.text, updatedAt };
         }
         break;
       case "ProjectV2ItemFieldNumberValue":
         if (fv.number != null) {
-          out[fieldName] = { kind: "number", number: fv.number };
+          out[fieldName] = {
+            kind: "number",
+            number: fv.number,
+            updatedAt,
+          };
         }
         break;
       case "ProjectV2ItemFieldDateValue":
         if (fv.date) {
-          out[fieldName] = { kind: "date", date: fv.date };
+          out[fieldName] = { kind: "date", date: fv.date, updatedAt };
         }
         break;
       case "ProjectV2ItemFieldIterationValue":
         if (fv.title) {
-          out[fieldName] = { kind: "iteration", title: fv.title };
+          out[fieldName] = {
+            kind: "iteration",
+            title: fv.title,
+            updatedAt,
+          };
         }
         break;
       // Other field types (Labels, Users, Milestone, etc.) intentionally

@@ -7,12 +7,17 @@ export type User = {
   avatarUrl: string;
 };
 
-export type FieldValue =
+type FieldValueData =
   | { kind: "single_select"; optionName: string }
   | { kind: "text"; text: string }
   | { kind: "number"; number: number }
   | { kind: "date"; date: string }
   | { kind: "iteration"; title: string };
+
+// `updatedAt` is when this field was last changed for this item — e.g. when
+// Status moved from Backlog to In progress. Used by the UI to surface stale
+// items.
+export type FieldValue = FieldValueData & { updatedAt: string | null };
 
 export type ProjectItem = {
   id: string;

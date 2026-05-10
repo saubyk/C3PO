@@ -50,7 +50,13 @@ const ITEMS: ProjectItem[] = [
     state: "OPEN",
     assignees: [alice],
     requestedReviewers: [],
-    fields: { Status: { kind: "single_select", optionName: "In progress" } },
+    fields: {
+      Status: {
+        kind: "single_select",
+        optionName: "In progress",
+        updatedAt: null,
+      },
+    },
   },
   {
     id: "i2",
@@ -61,7 +67,13 @@ const ITEMS: ProjectItem[] = [
     state: "OPEN",
     assignees: [bob],
     requestedReviewers: [alice],
-    fields: { Status: { kind: "single_select", optionName: "In review" } },
+    fields: {
+      Status: {
+        kind: "single_select",
+        optionName: "In review",
+        updatedAt: null,
+      },
+    },
   },
 ];
 

@@ -1,5 +1,6 @@
 import { CircleDot, CircleSlash, GitPullRequest, GitMerge } from "lucide-react";
 import type { ProjectItem } from "../types";
+import { AgeBadge } from "./AgeBadge";
 import { Pill } from "./Pill";
 
 function singleSelect(item: ProjectItem, name: string): string | null {
@@ -11,6 +12,7 @@ export function ItemRow({ item }: { item: ProjectItem }) {
   const status = singleSelect(item, "Status");
   const priority = singleSelect(item, "Priority");
   const size = singleSelect(item, "Size");
+  const statusUpdatedAt = item.fields.Status?.updatedAt ?? null;
 
   const isPR = item.contentType === "PullRequest";
   const isMerged = isPR && item.state === "MERGED";
@@ -42,6 +44,7 @@ export function ItemRow({ item }: { item: ProjectItem }) {
       <span className="truncate text-gray-900 flex-1">{item.title}</span>
       <span className="flex items-center gap-1 shrink-0">
         {status && <Pill kind="status" value={status} />}
+        <AgeBadge updatedAt={statusUpdatedAt} />
         {priority && <Pill kind="priority" value={priority} />}
         {size && <Pill kind="size" value={size} />}
       </span>
