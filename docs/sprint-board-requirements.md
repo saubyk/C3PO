@@ -236,13 +236,14 @@ A PM tracking work across multiple repos (e.g., `lnd`, `lightning-terminal`, `ta
 
 1. As a PM, I want to **pick a teammate and see how their open work is distributed across our repos**, so I can tell if they're spread too thin.
 2. As a tech lead, I want to **compare a teammate's review-load distribution to their assigned-work distribution**, so I can spot when they're being pulled into reviews far from where they're shipping.
+3. As a PM prepping for a 1:1, after picking a teammate on the Sprint Board, I want to **switch to the Workload tab and see that same teammate's distribution without re-selecting them.**
 
 ### 11.4 Functional requirements
 
 - **FR-W1.** A new top-level "Workload" tab/route alongside "Sprint Board".
 - **FR-W2.** Configuration is read from `.env` at startup. `WORKLOAD_TEAMS` is a comma-separated list of `org/team-slug` entries (e.g., `WORKLOAD_TEAMS=lightningnetwork/lnd-maintainers,lightningnetwork/lit-team`).
 - **FR-W3.** On startup, each entry is resolved to its GitHub team members. The roster of monitored developers is the union of those memberships; the set of orgs to search is the set of orgs implied by those entries (deduplicated). Resolution failures are logged and shown as a warning banner; the tab continues with the teams that did resolve.
-- **FR-W4.** Default state: the page shows the developer picker on the left and an empty state on the right ("Pick a developer to see their workload distribution"). No per-developer data is fetched until a developer is selected.
+- **FR-W4.** Default state: the page shows the developer picker on the left and an empty state on the right ("Pick a developer to see their workload distribution"). No per-developer data is fetched until a developer is selected. **Carry-over from Sprint Board:** when the user navigates to the Workload tab while a developer is selected on the Sprint Board, that login becomes the initial Workload selection (provided they are a member of the configured roster). If the carried-over login is not in the roster, the picker shows the default empty state with an additional hint: `<login> isn't in the configured workload roster.`
 - **FR-W5.** The left-rail picker lists every login from the resolved roster, sorted alphabetically. Avatar + handle only — **no count badge**. Showing per-developer counts on the picker would require fetching every developer's workload at page load (N parallel search queries before the user has clicked anything); the convenience is not worth that cost.
 - **FR-W6.** On developer selection, the right side renders **two pie charts side-by-side**:
   - **Assigned (N)** — open issues + PRs assigned to this developer, sliced by repo across all configured orgs.
@@ -250,6 +251,7 @@ A PM tracking work across multiple repos (e.g., `lnd`, `lightning-terminal`, `ta
 - **FR-W7.** Each chart shows a total count in the title and a legend mapping slice colors to `repo` / absolute count.
 - **FR-W8.** A small toggle switches slice labels between absolute counts and percentages. Counts is the default.
 - **FR-W9.** A manual refresh button re-fetches the currently selected developer's data, bypassing the cache. Same 90s TTL as v0.1.
+- **FR-W10.** Selection carry-over from the Sprint Board is **one-way and in-session only.** Changing the Workload selection does not affect the Sprint Board. A page reload clears the carry-over. Direct navigation to `/workload` without a prior Sprint Board selection shows the default empty state.
 
 ### 11.5 Layout sketch
 

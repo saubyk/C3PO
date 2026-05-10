@@ -300,13 +300,14 @@ $ npx tsx server/scripts/dump-workload.ts saubyk
 ### Tasks
 
 1. Install Recharts.
-2. Build `<DeveloperPicker>` — left rail, alphabetical, avatar + handle. **No count badges** (rationale captured in FR-W5 of the requirements doc).
-3. Build `<WorkloadCharts>` — two side-by-side pies (Assigned, Reviewing). Each shows the total count in the title and a legend mapping slice colors to `repo` / absolute count.
-4. Counts/percentages toggle on the chart pair. Counts is the default. Pin colors via a stable `repo → color` map so a slice doesn't change color when toggling modes or when the underlying data shifts.
-5. Empty state ("Pick a developer to see their workload distribution") when no developer is selected.
-6. Warning banner shown when `/api/workload/roster` returns warnings (unresolvable teams).
-7. Loading and error states: skeleton on first chart load, error banner on rate-limit or network failure (reuse v0.1's banner where possible).
-8. Update the README's PAT-permissions section to add `Members: Read` for every org in `WORKLOAD_TEAMS`.
+2. Lift Sprint Board's `selectedLogin` out of `SprintBoardRoute` into a shared location the Workload route can read — `AppShell` state exposed via Outlet context is the natural fit. Sprint Board continues to read/write it; this is purely a state-lift refactor.
+3. Build `<DeveloperPicker>` — left rail, alphabetical, avatar + handle. **No count badges** (rationale captured in FR-W5 of the requirements doc). On Workload-route mount, initialize the picker's selection from the lifted Sprint Board state. If the carried-over login is in the roster, pre-select it; if it isn't, leave selection empty and render the FR-W4 hint ("`<login>` isn't in the configured workload roster"). Workload's own picker changes stay local — they do not write back to the lifted Sprint Board state.
+4. Build `<WorkloadCharts>` — two side-by-side pies (Assigned, Reviewing). Each shows the total count in the title and a legend mapping slice colors to `repo` / absolute count.
+5. Counts/percentages toggle on the chart pair. Counts is the default. Pin colors via a stable `repo → color` map so a slice doesn't change color when toggling modes or when the underlying data shifts.
+6. Empty state ("Pick a developer to see their workload distribution") when no developer is selected.
+7. Warning banner shown when `/api/workload/roster` returns warnings (unresolvable teams).
+8. Loading and error states: skeleton on first chart load, error banner on rate-limit or network failure (reuse v0.1's banner where possible).
+9. Update the README's PAT-permissions section to add `Members: Read` for every org in `WORKLOAD_TEAMS`.
 
 ### Deliverable
 
