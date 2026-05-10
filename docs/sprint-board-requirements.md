@@ -214,17 +214,85 @@ The v1 release is complete when a PM can, against the real `lightningnetwork/lnd
 
 ---
 
-## 11. Out of scope / future work
+## 11. Planned for v0.2 — Workload distribution dashboard
+
+A second top-level view, served from `/workload`, that complements v0.1's project-board-scoped view. Where v0.1 answers "what specifically is each person doing on this sprint board," v0.2 answers "*where* is each person's attention going across the team's repos." The output is a visualization, not an item list.
+
+### 11.1 Motivation
+
+A PM tracking work across multiple repos (e.g., `lnd`, `lightning-terminal`, `taproot-assets`) wants to spot when a teammate is spread too thin, or when their review load is concentrated in repos far from where they're shipping. v0.1's per-project-board view cannot answer this — many issues and PRs that consume a teammate's time are not on any one project board.
+
+### 11.2 Comparison with v0.1
+
+| Dimension         | v0.1 Sprint Board                            | v0.2 Workload                                            |
+|-------------------|----------------------------------------------|----------------------------------------------------------|
+| Scope             | One Projects v2 board                        | All repos in the orgs implied by configured GitHub teams |
+| Roster source     | Inferred from project assignees + reviewers  | GitHub team membership defined in `.env`                 |
+| Default view      | Aggregate across team                        | Empty until a developer is picked                        |
+| Output            | Three columns of item rows                   | Two pie charts of counts grouped by repo                 |
+| Item-level fields | Status, Priority, Size pills                 | None — counts only                                       |
+
+### 11.3 User stories
+
+1. As a PM, I want to **pick a teammate and see how their open work is distributed across our repos**, so I can tell if they're spread too thin.
+2. As a tech lead, I want to **compare a teammate's review-load distribution to their assigned-work distribution**, so I can spot when they're being pulled into reviews far from where they're shipping.
+
+### 11.4 Functional requirements
+
+- **FR-W1.** A new top-level "Workload" tab/route alongside "Sprint Board".
+- **FR-W2.** Configuration is read from `.env` at startup. `WORKLOAD_TEAMS` is a comma-separated list of `org/team-slug` entries (e.g., `WORKLOAD_TEAMS=lightningnetwork/lnd-maintainers,lightningnetwork/lit-team`).
+- **FR-W3.** On startup, each entry is resolved to its GitHub team members. The roster of monitored developers is the union of those memberships; the set of orgs to search is the set of orgs implied by those entries (deduplicated). Resolution failures are logged and shown as a warning banner; the tab continues with the teams that did resolve.
+- **FR-W4.** Default state: the page shows the developer picker on the left and an empty state on the right ("Pick a developer to see their workload distribution"). No per-developer data is fetched until a developer is selected.
+- **FR-W5.** The left-rail picker lists every login from the resolved roster, sorted alphabetically. Avatar + handle only — **no count badge**. Showing per-developer counts on the picker would require fetching every developer's workload at page load (N parallel search queries before the user has clicked anything); the convenience is not worth that cost.
+- **FR-W6.** On developer selection, the right side renders **two pie charts side-by-side**:
+  - **Assigned (N)** — open issues + PRs assigned to this developer, sliced by repo across all configured orgs.
+  - **Reviewing (N)** — open PRs where this developer is a requested reviewer, sliced by repo.
+- **FR-W7.** Each chart shows a total count in the title and a legend mapping slice colors to `repo` / absolute count.
+- **FR-W8.** A small toggle switches slice labels between absolute counts and percentages. Counts is the default.
+- **FR-W9.** A manual refresh button re-fetches the currently selected developer's data, bypassing the cache. Same 90s TTL as v0.1.
+
+### 11.5 Layout sketch
+
+```
+┌──────────────────┬──────────────────────────────────────────────┐
+│ DEVELOPERS       │  WORKLOAD — saubyk                           │
+│ (left rail)      │                                              │
+├──────────────────┤  ┌─ Assigned (12) ─┐  ┌─ Reviewing (8) ─┐    │
+│ ▸ ellemouton     │  │  ◐ lnd      6   │  │  ◐ lnd      5   │    │
+│ ▸ saubyk     ●   │  │  ◐ lit      4   │  │  ◐ lit      3   │    │
+│ ▸ bitromortac    │  │  ◐ tap      2   │  └─────────────────┘    │
+│ ▸ ziggie1984     │  └─────────────────┘                         │
+│   …              │                                              │
+└──────────────────┴──────────────────────────────────────────────┘
+```
+
+### 11.6 Technical notes
+
+- **Data source.** GraphQL `search` connection, two queries per developer per configured org: `is:open assignee:<login> org:<org>` and `is:open review-requested:<login> org:<org>`.
+- **Server-side aggregation.** Only `repository.nameWithOwner` is needed per result. The server reduces the response to `{ assigned: [{repo, count}], reviewing: [{repo, count}] }` so the frontend payload is tiny.
+- **Search cap.** GitHub's search connection caps results at 1000 per query. If hit, fall back to per-repo iteration. Unlikely for a single developer's open work but should be guarded.
+- **Permissions.** Resolving team membership requires `Members: Read` on every configured org — update the PAT-permissions section accordingly.
+- **Charting.** Recharts. Declarative, ~93kb gzipped, the standard React choice for this shape of visualization.
+
+### 11.7 Out of scope for v0.2
+
+- Drill-down from a slice into the underlying issues/PRs.
+- Closed or recently-merged items.
+- Multi-developer side-by-side comparison.
+- Slice weighting by anything other than count (priority-weighted load, aging, etc.).
+
+---
+
+## 12. Out of scope / future work
 
 - Editing project fields (status, priority, size) from within the app.
 - Sprint metrics: cycle time, review latency, P0 aging.
 - Slack or email notifications ("you have 4 PRs waiting for your review").
-- Multi-project unified view (one screen showing v0.22 *and* v0.23).
 - Hosted/multi-tenant deployment with OAuth.
 
 ---
 
-## 12. Open questions
+## 13. Open questions
 
 1. Should "team members" be inferred from the project (current proposal) or configured explicitly via a `team.json` file? Inferred is simpler; explicit lets PMs include teammates who happen to have no items this sprint.
 2. For the review column, do we count PRs where the user has *already* approved? Proposal: hide them by default, with a toggle to show.

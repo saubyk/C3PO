@@ -28,7 +28,7 @@ A reasonable cadence is one milestone per evening session for M1–M3, two sessi
 ### Tasks
 
 1. Initialize the repo with two workspaces: `server/` (Express + TS) and `web/` (Vite + React + TS). A monorepo with `npm` workspaces is fine; nothing fancier is needed.
-2. Add `.gitignore`, `.env.example`, `README.md`. The `.env.example` should list `GITHUB_TOKEN` and `PORT`. (No separate owner config — the token's identity is enough; the app discovers everything visible to the viewer.)
+2. Add `.gitignore`, `.env.example`, `README.md`. The `.env.example` should list `GITHUB_TOKEN`, `PORT`, and a placeholder `WORKLOAD_TEAMS=` entry (consumed in M8 — leaving it blank disables the Workload tab without breaking v0.1). No separate owner config — the token's identity is enough; the app discovers everything visible to the viewer.
 3. In `server/`, install `@octokit/graphql`, `@octokit/rest`, `dotenv`, `express`, `cors`. Wire up a single endpoint `GET /api/health` that calls GitHub's `viewer { login }` query and returns `{ status: "ok", login }`.
 4. In `web/`, scaffold a one-page React app that calls `/api/health` on load and renders "Connected as @yourlogin." Configure Vite's dev server to proxy `/api` to the Express port.
 5. Add an `npm start` script at the root that runs both servers concurrently (`concurrently` package is fine).
@@ -215,6 +215,115 @@ Pick whichever of these would actually change how you run sprints. None are requ
 - **Per-person aging** — show how many days each item has been in its current status. Surfaces the items that are quietly stuck.
 - **Slack export** — a "Copy stand-up summary" button that puts a markdown summary of one assignee's items on the clipboard, formatted for pasting into Slack.
 - **OAuth Device Flow** — replace the PAT setup with a "Log in with GitHub" flow (still no hosted callback needed). Section 7 of the requirements doc explains why this is a v2 feature, not v1.
+
+---
+
+# v0.2 — Workload distribution dashboard
+
+The next three milestones implement the v0.2 Workload tab specified in section 11 of the requirements doc. They follow the same data → API → UI cadence as v0.1's M2 → M3 → M4 — front-loading the riskiest part (the new GraphQL search shape and team-resolution edge cases) into M8 before any HTTP or UI is built. M9 introduces client-side routing into the v0.1 app, which is itself a non-trivial refactor and deserves its own milestone.
+
+---
+
+## Milestone 8 — v0.2 data layer
+
+**Goal.** Pure functions that, given `WORKLOAD_TEAMS`, return a roster and a per-developer per-repo count breakdown. No HTTP, no UI — just code you can call from a CLI script. Mirrors M2's structure and intent.
+
+### Tasks
+
+1. Add a config module that parses `WORKLOAD_TEAMS` (comma-separated `org/team-slug`). Surface clear errors for malformed entries; an empty/missing variable is valid (workload features become disabled).
+2. Write `resolveRoster(teams)` — calls `GET /orgs/{org}/teams/{slug}/members` for each entry (in parallel) and returns `{ orgs, roster, warnings }`. Deduplicate orgs and logins. Per-team failures become warnings, not exceptions.
+3. Write `getDeveloperWorkload(login, orgs)` — runs the two GraphQL `search` queries per org (`is:open assignee:<login> org:<org>`, `is:open review-requested:<login> org:<org>`) in parallel. Aggregate results to `{ assigned: [{repo, count}], reviewing: [{repo, count}] }`. Fetch only `repository.nameWithOwner` from each search hit.
+4. Handle the GraphQL search 1000-result cap defensively: log a warning if `issueCount > 1000` for any query. Per-repo fallback iteration can wait until M10, unless you actually hit the cap during verification.
+5. CLI script `server/scripts/dump-workload.ts <login>` that prints the aggregated counts as JSON. **This script is the artifact** — same pattern as M2's `dump-project.ts`.
+
+### Deliverable
+
+```
+$ npx tsx server/scripts/dump-workload.ts saubyk
+{
+  "assigned":  [{ "repo": "lightningnetwork/lnd", "count": 6 }, ...],
+  "reviewing": [{ "repo": "lightningnetwork/lnd", "count": 5 }, ...]
+}
+```
+
+### Verification
+
+- Run against a known developer in your team. Per-repo counts match what the equivalent `is:open assignee:<login> org:<org>` and `is:open review-requested:<login> org:<org>` queries return in GitHub's search UI.
+- Misspell a team in `WORKLOAD_TEAMS`. The warning shows up in CLI output; the script doesn't crash.
+- Run with `WORKLOAD_TEAMS` blank. The script exits cleanly with a "no teams configured" message.
+
+### Claude Code notes
+
+- Use `@octokit/graphql` for the search query and `@octokit/rest` for team membership (`octokit.rest.teams.listMembersInOrg`). Team membership is not available through Projects v2 GraphQL.
+- Resist the urge to fetch full item details. The chart only needs `repository.nameWithOwner` — anything more is wasted bandwidth.
+- Don't introduce a config-validation library (zod, ajv, etc.). A small parse function with explicit error messages is enough at this scale.
+
+---
+
+## Milestone 9 — v0.2 backend API + top-level tab navigation
+
+**Goal.** Wrap M8's functions in HTTP endpoints, and introduce React Router so the app has a real "Sprint Board" / "Workload" tab switcher. The Workload tab is just a placeholder at the end of this milestone — UI lands in M10.
+
+### Tasks
+
+1. Resolve the roster once at server startup using M8's `resolveRoster`. Cache the result in memory. Documented refresh path: restart the server.
+2. Add `GET /api/workload/roster` (resolved roster + configured orgs + warnings) and `GET /api/workload/:login` (aggregated counts). Same 90s cache pattern as M3; `?refresh=1` bypasses.
+3. Install `react-router-dom`. Add two routes: `/` (existing Sprint Board) and `/workload` (placeholder component).
+4. Add header-level tabs for "Sprint Board" and "Workload". Active tab gets a clear visual treatment (underline or fill).
+5. Workload route renders only an empty placeholder ("Workload — UI in M10") at this stage. No data fetching here.
+
+### Deliverable
+
+- `curl http://localhost:5173/api/workload/roster` returns the configured roster.
+- `curl http://localhost:5173/api/workload/<login>` returns aggregated counts.
+- Click between the two tabs in the UI without regression to v0.1 flows.
+
+### Verification
+
+- All v0.1 functionality still works after the routing refactor — assignee selection, filters, refresh, project switcher.
+- `/workload` is a real route: deep links work, browser back/forward work.
+- Cache hit on a second roster fetch within 90s.
+- A bad token still surfaces the same clean error from M1, not a router-level crash.
+
+### Claude Code notes
+
+- React Router v6+. Use `<Routes>` / `<Route>` and `<Outlet />` for the shared header. Don't drag in v5 patterns from training data.
+- Don't introduce Redux or Zustand for active-tab state — the route is the state.
+- Wrap the existing v0.1 layout in a minimal `<AppShell>` that adds the header tabs above the existing content. Don't restructure the v0.1 components themselves.
+
+---
+
+## Milestone 10 — v0.2 Workload UI
+
+**Goal.** The visualization-first dashboard. Pick a developer from the left rail, see two pie charts of their open work distributed across repos.
+
+### Tasks
+
+1. Install Recharts.
+2. Build `<DeveloperPicker>` — left rail, alphabetical, avatar + handle. **No count badges** (rationale captured in FR-W5 of the requirements doc).
+3. Build `<WorkloadCharts>` — two side-by-side pies (Assigned, Reviewing). Each shows the total count in the title and a legend mapping slice colors to `repo` / absolute count.
+4. Counts/percentages toggle on the chart pair. Counts is the default. Pin colors via a stable `repo → color` map so a slice doesn't change color when toggling modes or when the underlying data shifts.
+5. Empty state ("Pick a developer to see their workload distribution") when no developer is selected.
+6. Warning banner shown when `/api/workload/roster` returns warnings (unresolvable teams).
+7. Loading and error states: skeleton on first chart load, error banner on rate-limit or network failure (reuse v0.1's banner where possible).
+8. Update the README's PAT-permissions section to add `Members: Read` for every org in `WORKLOAD_TEAMS`.
+
+### Deliverable
+
+Pick a developer in the left rail → two pie charts render within a second on cache hit. Counts/percentages toggle works. Misspelled team in `.env` → warning banner visible; the rest of the tab still works.
+
+### Verification
+
+- Chart counts match the equivalent GitHub search UI queries for several developers.
+- On first page load of `/workload`, only `/api/workload/roster` fires. No per-developer fetches until a click. Confirm in the network tab.
+- Pick a developer with zero open items in some category — the empty pie renders gracefully (e.g., a placeholder "No open assigned items").
+- Recharts legend doesn't truncate repo names at the default viewport width.
+
+### Claude Code notes
+
+- Recharts colors: use the `<Cell>` API and a stable `repo → color` map computed once. Don't try to recolor pies via Tailwind class injection — it won't take.
+- Pie label collisions are real with many small slices. If a chart has more than ~6 repos, prefer legend-only labeling and skip on-slice text.
+- Don't generalize v0.1's column components into shared abstractions for this layout. The shapes diverge enough (item rows vs aggregated charts) that adapter props would obscure both — a fresh `<WorkloadCharts>` is cleaner.
 
 ---
 
