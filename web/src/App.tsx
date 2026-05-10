@@ -1,47 +1,69 @@
-import { useQuery } from "@tanstack/react-query";
-
-type HealthOk = { status: "ok"; login: string };
-type HealthErr = { status: "error"; message: string };
-type Health = HealthOk | HealthErr;
-
-async function fetchHealth(): Promise<Health> {
-  const res = await fetch("/api/health");
-  const body = (await res.json().catch(() => null)) as Health | null;
-  if (body && (body.status === "ok" || body.status === "error")) return body;
-  return {
-    status: "error",
-    message: `Unexpected response from /api/health (HTTP ${res.status}).`,
-  };
-}
+import { ACTIVE_PROJECT, useItems, useTeam } from "./api";
+import { Header } from "./components/Header";
+import { AssigneeList } from "./components/AssigneeList";
+import { AssignedColumn } from "./components/AssignedColumn";
+import { ReviewColumn } from "./components/ReviewColumn";
 
 export default function App() {
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["health"],
-    queryFn: fetchHealth,
-  });
+  const items = useItems(ACTIVE_PROJECT.owner, ACTIVE_PROJECT.number);
+  const team = useTeam(ACTIVE_PROJECT.owner, ACTIVE_PROJECT.number);
 
   return (
-    <main className="min-h-screen bg-white text-gray-900 text-sm">
-      <header className="border-b border-gray-200 px-4 py-2">
-        <h1 className="font-semibold">C3PO</h1>
-      </header>
-      <section className="px-4 py-3">
-        {isLoading && <p className="text-gray-500">Checking GitHub…</p>}
-        {error && (
-          <p className="text-red-600">
-            Could not reach the server: {(error as Error).message}
-          </p>
-        )}
-        {data?.status === "ok" && (
-          <p>
-            Connected as{" "}
-            <span className="font-mono">@{data.login}</span>.
-          </p>
-        )}
-        {data?.status === "error" && (
-          <p className="text-red-600">{data.message}</p>
-        )}
-      </section>
+    <main className="h-screen flex flex-col bg-white text-gray-900">
+      <Header />
+      <div className="flex flex-1 min-h-0 divide-x divide-gray-200">
+        <aside className="w-56 shrink-0 overflow-y-auto">
+          <ColumnHeader title="Assignees" />
+          <AsyncSlot query={team}>
+            {(data) => <AssigneeList team={data} />}
+          </AsyncSlot>
+        </aside>
+        <section className="flex-1 min-w-0 overflow-y-auto">
+          <ColumnHeader title="Assigned" />
+          <AsyncSlot query={items}>
+            {(data) => <AssignedColumn items={data} />}
+          </AsyncSlot>
+        </section>
+        <section className="flex-1 min-w-0 overflow-y-auto">
+          <ColumnHeader title="Reviewing" />
+          <AsyncSlot query={items}>
+            {(data) => <ReviewColumn items={data} />}
+          </AsyncSlot>
+        </section>
+      </div>
     </main>
   );
+}
+
+function ColumnHeader({ title }: { title: string }) {
+  return (
+    <div className="px-3 py-2 border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 sticky top-0 bg-white z-10">
+      {title}
+    </div>
+  );
+}
+
+type Queryish<T> = {
+  data: T | undefined;
+  isLoading: boolean;
+  error: unknown;
+};
+
+function AsyncSlot<T>({
+  query,
+  children,
+}: {
+  query: Queryish<T>;
+  children: (data: T) => React.ReactNode;
+}) {
+  if (query.isLoading) {
+    return <p className="px-3 py-2 text-xs text-gray-500">Loading…</p>;
+  }
+  if (query.error) {
+    const msg =
+      query.error instanceof Error ? query.error.message : "Request failed.";
+    return <p className="px-3 py-2 text-xs text-red-600">{msg}</p>;
+  }
+  if (query.data) return <>{children(query.data)}</>;
+  return null;
 }
