@@ -12,7 +12,8 @@ assignee to drill in; click again or press `Esc` to clear.
 Single-user tool. Runs on your laptop, reads from `github.com` via a Personal
 Access Token in a local `.env`. Read-only — never writes to GitHub.
 
-<!-- TODO(m6): drop a screenshot at docs/screenshot.png and reference it here. -->
+<img width="1646" height="978" alt="image" src="https://github.com/user-attachments/assets/e8a09526-5959-452a-9aa0-6b9d18d41537" />
+
 
 ## Quick start
 
