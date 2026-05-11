@@ -128,17 +128,25 @@ export async function getDeveloperWorkload(
   const runKind = async (
     kind: "assigned" | "reviewing",
   ): Promise<WorkloadItem[]> => {
-    const queries = orgs.map((org) =>
+    // For "reviewing" we union two searches per org: `review-requested:` only
+    // matches PRs where the user is currently requested AND hasn't reviewed
+    // yet. Once they submit any review GitHub drops them from that list, so
+    // we also pull `reviewed-by:` to keep long-running reviews (where the
+    // dev disengages and re-engages over time) in the picture.
+    const queries =
       kind === "assigned"
-        ? `is:open assignee:${login} org:${org}`
-        : `is:pr is:open review-requested:${login} org:${org}`,
-    );
+        ? orgs.map((org) => `is:open assignee:${login} org:${org}`)
+        : orgs.flatMap((org) => [
+            `is:pr is:open review-requested:${login} org:${org}`,
+            `is:pr is:open reviewed-by:${login} org:${org}`,
+          ]);
 
     const results = await Promise.allSettled(
       queries.map((q) => searchItems(client, q)),
     );
 
     const merged: WorkloadItem[] = [];
+    const seenUrls = new Set<string>();
     for (let i = 0; i < results.length; i++) {
       const r = results[i];
       const q = queries[i] ?? "";
@@ -157,7 +165,11 @@ export async function getDeveloperWorkload(
           reason: `search returned more than ${SEARCH_CAP} results; the list may be truncated`,
         });
       }
-      merged.push(...r.value.items);
+      for (const item of r.value.items) {
+        if (seenUrls.has(item.url)) continue;
+        seenUrls.add(item.url);
+        merged.push(item);
+      }
     }
 
     // Sort by repo then number for a stable order. The UI groups by repo for
