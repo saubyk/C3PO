@@ -92,6 +92,17 @@ and a page reload clears the carry-over.
 Leave `WORKLOAD_TEAMS` blank to keep the Workload tab as an empty placeholder
 without affecting the Sprint Board.
 
+If your team members also contribute to orgs where your token can read repos
+but can't read team membership, set `WORKLOAD_ORGS` to widen the search:
+
+```bash
+WORKLOAD_ORGS=other-org,vendor-org
+```
+
+These orgs are unioned with the ones derived from `WORKLOAD_TEAMS` and added
+to the workload search scope. The roster is unchanged — `WORKLOAD_ORGS` only
+widens where each developer's open work is searched, not who appears in it.
+
 ## Architecture
 
 ```

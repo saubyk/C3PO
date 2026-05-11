@@ -112,7 +112,12 @@ export function createApp(deps: AppDeps = {}) {
       "workload:roster",
       refresh,
       res,
-      () => loadRoster(token, process.env.WORKLOAD_TEAMS),
+      () =>
+        loadRoster(
+          token,
+          process.env.WORKLOAD_TEAMS,
+          process.env.WORKLOAD_ORGS,
+        ),
     );
     res.json(roster);
   }));
@@ -128,7 +133,12 @@ export function createApp(deps: AppDeps = {}) {
       "workload:roster",
       refresh,
       res,
-      () => loadRoster(token, process.env.WORKLOAD_TEAMS),
+      () =>
+        loadRoster(
+          token,
+          process.env.WORKLOAD_TEAMS,
+          process.env.WORKLOAD_ORGS,
+        ),
     );
     const workload = await getOrFetch<WorkloadResponse>(
       cache,

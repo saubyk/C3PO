@@ -212,7 +212,11 @@ describe("/api/workload/roster", () => {
     const res = await request(makeApp()).get("/api/workload/roster").expect(200);
     expect(res.body).toEqual(ROSTER);
     expect(mockedRoster).toHaveBeenCalledTimes(1);
-    expect(mockedRoster).toHaveBeenCalledWith("test-token", process.env.WORKLOAD_TEAMS);
+    expect(mockedRoster).toHaveBeenCalledWith(
+      "test-token",
+      process.env.WORKLOAD_TEAMS,
+      process.env.WORKLOAD_ORGS,
+    );
   });
 
   it("serves the second call from cache", async () => {

@@ -230,7 +230,7 @@ The next three milestones implement the v0.2 Workload tab specified in section 1
 
 ### Tasks
 
-1. Add a config module that parses `WORKLOAD_TEAMS` (comma-separated `org/team-slug`). Surface clear errors for malformed entries; an empty/missing variable is valid (workload features become disabled).
+1. Add a config module that parses `WORKLOAD_TEAMS` (comma-separated `org/team-slug`) and `WORKLOAD_ORGS` (comma-separated bare org logins). Surface clear errors for malformed entries; empty/missing variables are valid (the workload tab becomes disabled only when *both* are blank). `WORKLOAD_ORGS` is search-scope only — its orgs are unioned with the team-derived orgs but do not contribute to the roster.
 2. Write `resolveRoster(teams)` — calls `GET /orgs/{org}/teams/{slug}/members` for each entry (in parallel) and returns `{ orgs, roster, warnings }`. Deduplicate orgs and logins. Per-team failures become warnings, not exceptions.
 3. Write `getDeveloperWorkload(login, orgs)` — runs the two GraphQL `search` queries per org (`is:open assignee:<login> org:<org>`, `is:open review-requested:<login> org:<org>`) in parallel. Aggregate results to `{ assigned: [{repo, count}], reviewing: [{repo, count}] }`. Fetch only `repository.nameWithOwner` from each search hit.
 4. Handle the GraphQL search 1000-result cap defensively: log a warning if `issueCount > 1000` for any query. Per-repo fallback iteration can wait until M10, unless you actually hit the cap during verification.
@@ -250,7 +250,8 @@ $ npx tsx server/scripts/dump-workload.ts saubyk
 
 - Run against a known developer in your team. Per-repo counts match what the equivalent `is:open assignee:<login> org:<org>` and `is:open review-requested:<login> org:<org>` queries return in GitHub's search UI.
 - Misspell a team in `WORKLOAD_TEAMS`. The warning shows up in CLI output; the script doesn't crash.
-- Run with `WORKLOAD_TEAMS` blank. The script exits cleanly with a "no teams configured" message.
+- Run with both `WORKLOAD_TEAMS` and `WORKLOAD_ORGS` blank. The script exits cleanly with a "no teams or orgs configured" message.
+- Run with only `WORKLOAD_ORGS` set (no `WORKLOAD_TEAMS`). The roster is empty but the configured orgs are still searched for the given login.
 
 ### Claude Code notes
 

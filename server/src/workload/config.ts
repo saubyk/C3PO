@@ -8,6 +8,11 @@ export type ParsedWorkloadTeams = {
   errors: string[];
 };
 
+export type ParsedWorkloadOrgs = {
+  orgs: string[];
+  errors: string[];
+};
+
 // Org logins follow GitHub's existing constraint: alphanumeric + hyphens,
 // up to 39 chars. Team slugs are more permissive (underscores, dots).
 const ORG_RE = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/;
@@ -53,4 +58,33 @@ export function parseWorkloadTeams(
   }
 
   return { teams, errors };
+}
+
+// WORKLOAD_ORGS is an additional search-scope-only list of org logins for
+// orgs where the token can read repos but can't read team membership. The
+// roster still comes from WORKLOAD_TEAMS; these orgs only widen the search.
+export function parseWorkloadOrgs(
+  raw: string | undefined,
+): ParsedWorkloadOrgs {
+  const orgs: string[] = [];
+  const errors: string[] = [];
+  if (!raw) return { orgs, errors };
+
+  const seen = new Set<string>();
+  const entries = raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0);
+
+  for (const entry of entries) {
+    if (!ORG_RE.test(entry)) {
+      errors.push(`Invalid WORKLOAD_ORGS entry: "${entry}".`);
+      continue;
+    }
+    if (seen.has(entry)) continue;
+    seen.add(entry);
+    orgs.push(entry);
+  }
+
+  return { orgs, errors };
 }

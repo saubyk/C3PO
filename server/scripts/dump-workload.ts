@@ -1,7 +1,10 @@
 import dotenv from "dotenv";
 import { fileURLToPath } from "node:url";
 import { dirname, resolve } from "node:path";
-import { parseWorkloadTeams } from "../src/workload/config.js";
+import {
+  parseWorkloadTeams,
+  parseWorkloadOrgs,
+} from "../src/workload/config.js";
 import { resolveRoster } from "../src/workload/roster.js";
 import { getDeveloperWorkload } from "../src/workload/developer.js";
 
@@ -22,22 +25,31 @@ async function main(): Promise<void> {
     process.exit(2);
   }
 
-  const { teams, errors } = parseWorkloadTeams(process.env.WORKLOAD_TEAMS);
-  for (const e of errors) console.warn(`[workload] ${e}`);
-  if (teams.length === 0) {
+  const { teams, errors: teamErrors } = parseWorkloadTeams(
+    process.env.WORKLOAD_TEAMS,
+  );
+  const { orgs: extraOrgs, errors: orgErrors } = parseWorkloadOrgs(
+    process.env.WORKLOAD_ORGS,
+  );
+  for (const e of [...teamErrors, ...orgErrors]) console.warn(`[workload] ${e}`);
+  if (teams.length === 0 && extraOrgs.length === 0) {
     console.error(
-      "No teams configured. Set WORKLOAD_TEAMS=<org>/<team-slug>,... in .env.",
+      "No teams or orgs configured. Set WORKLOAD_TEAMS=<org>/<team-slug>,... and/or WORKLOAD_ORGS=<org>,... in .env.",
     );
     process.exit(2);
   }
 
-  const { orgs, warnings: rosterWarnings } = await resolveRoster(token, teams);
+  const { orgs: teamOrgs, warnings: rosterWarnings } = await resolveRoster(
+    token,
+    teams,
+  );
   for (const w of rosterWarnings) {
     console.warn(`[workload] team ${w.team}: ${w.reason}`);
   }
+  const orgs = Array.from(new Set([...teamOrgs, ...extraOrgs])).sort();
   if (orgs.length === 0) {
     console.error(
-      "No orgs resolved from WORKLOAD_TEAMS — nothing to search. Check team slugs and read:org scope.",
+      "No orgs resolved — nothing to search. Check team slugs / WORKLOAD_ORGS values and read:org scope.",
     );
     process.exit(1);
   }
