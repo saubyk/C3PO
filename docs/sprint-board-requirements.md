@@ -252,6 +252,7 @@ A PM tracking work across multiple repos (e.g., `lnd`, `lightning-terminal`, `ta
 - **FR-W8.** A small toggle switches slice labels between absolute counts and percentages. Counts is the default.
 - **FR-W9.** A manual refresh button re-fetches the currently selected developer's data, bypassing the cache. Same 90s TTL as v0.1.
 - **FR-W10.** Selection carry-over from the Sprint Board is **one-way and in-session only.** Changing the Workload selection does not affect the Sprint Board. A page reload clears the carry-over. Direct navigation to `/workload` without a prior Sprint Board selection shows the default empty state.
+- **FR-W11.** Clicking a pie slice — or its corresponding legend row — opens a **drill-down list** of the underlying items below the chart grid. Each row shows an `Issue` / `PullRequest` icon, the `<repo>#<number>` reference, and the title, and links out to the GitHub item in a new tab. Selection is **single across both charts**: clicking a slice in Reviewing clears any Assigned selection and vice versa. Re-clicking the active slice (or the panel's Close button) closes the list. The selection resets when the developer changes or the tab is reloaded — it is not persisted in the URL.
 
 ### 11.5 Layout sketch
 

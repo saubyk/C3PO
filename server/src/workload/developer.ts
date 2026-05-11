@@ -1,8 +1,11 @@
 import { graphql } from "@octokit/graphql";
 
-export type RepoCount = {
+export type WorkloadItem = {
+  kind: "Issue" | "PullRequest";
   repo: string;
-  count: number;
+  number: number;
+  title: string;
+  url: string;
 };
 
 export type WorkloadWarning = {
@@ -13,14 +16,14 @@ export type WorkloadWarning = {
 export type DeveloperWorkload = {
   login: string;
   orgs: string[];
-  assigned: RepoCount[];
-  reviewing: RepoCount[];
+  assigned: WorkloadItem[];
+  reviewing: WorkloadItem[];
   warnings: WorkloadWarning[];
 };
 
 // GitHub's search API caps results at 1000 per query, even with pagination.
-// If a developer's open work exceeds this in a single org, the counts will
-// undercount and we surface a warning.
+// If a developer's open work exceeds this in a single org, the item list
+// will be truncated and we surface a warning.
 const SEARCH_CAP = 1000;
 
 const SEARCH_QUERY = `
@@ -30,16 +33,33 @@ const SEARCH_QUERY = `
       pageInfo { hasNextPage endCursor }
       nodes {
         __typename
-        ... on Issue { repository { nameWithOwner } }
-        ... on PullRequest { repository { nameWithOwner } }
+        ... on Issue {
+          number
+          title
+          url
+          repository { nameWithOwner }
+        }
+        ... on PullRequest {
+          number
+          title
+          url
+          repository { nameWithOwner }
+        }
       }
     }
   }
 `;
 
+type ItemFields = {
+  number: number;
+  title: string;
+  url: string;
+  repository: { nameWithOwner: string };
+};
+
 type SearchNode =
-  | { __typename: "Issue"; repository: { nameWithOwner: string } }
-  | { __typename: "PullRequest"; repository: { nameWithOwner: string } }
+  | ({ __typename: "Issue" } & ItemFields)
+  | ({ __typename: "PullRequest" } & ItemFields)
   | { __typename: string };
 
 type SearchResponse = {
@@ -51,7 +71,7 @@ type SearchResponse = {
 };
 
 type SearchResult = {
-  counts: Map<string, number>;
+  items: WorkloadItem[];
   capped: boolean;
 };
 
@@ -61,13 +81,12 @@ function makeClient(token: string) {
   });
 }
 
-async function searchByRepo(
+async function searchItems(
   client: ReturnType<typeof makeClient>,
   q: string,
 ): Promise<SearchResult> {
-  const counts = new Map<string, number>();
+  const items: WorkloadItem[] = [];
   let cursor: string | null = null;
-  let totalSeen = 0;
   let capped = false;
 
   while (true) {
@@ -78,20 +97,24 @@ async function searchByRepo(
         (node.__typename === "Issue" || node.__typename === "PullRequest") &&
         "repository" in node
       ) {
-        const repo = node.repository.nameWithOwner;
-        counts.set(repo, (counts.get(repo) ?? 0) + 1);
-        totalSeen += 1;
+        items.push({
+          kind: node.__typename,
+          repo: node.repository.nameWithOwner,
+          number: node.number,
+          title: node.title,
+          url: node.url,
+        });
       }
     }
     if (!data.search.pageInfo.hasNextPage) break;
-    if (totalSeen >= SEARCH_CAP) {
+    if (items.length >= SEARCH_CAP) {
       capped = true;
       break;
     }
     cursor = data.search.pageInfo.endCursor;
   }
 
-  return { counts, capped };
+  return { items, capped };
 }
 
 export async function getDeveloperWorkload(
@@ -104,7 +127,7 @@ export async function getDeveloperWorkload(
 
   const runKind = async (
     kind: "assigned" | "reviewing",
-  ): Promise<RepoCount[]> => {
+  ): Promise<WorkloadItem[]> => {
     const queries = orgs.map((org) =>
       kind === "assigned"
         ? `is:open assignee:${login} org:${org}`
@@ -112,10 +135,10 @@ export async function getDeveloperWorkload(
     );
 
     const results = await Promise.allSettled(
-      queries.map((q) => searchByRepo(client, q)),
+      queries.map((q) => searchItems(client, q)),
     );
 
-    const merged = new Map<string, number>();
+    const merged: WorkloadItem[] = [];
     for (let i = 0; i < results.length; i++) {
       const r = results[i];
       const q = queries[i] ?? "";
@@ -131,17 +154,19 @@ export async function getDeveloperWorkload(
       if (r.value.capped) {
         warnings.push({
           query: q,
-          reason: `search returned more than ${SEARCH_CAP} results; counts may be undercounted`,
+          reason: `search returned more than ${SEARCH_CAP} results; the list may be truncated`,
         });
       }
-      for (const [repo, count] of r.value.counts) {
-        merged.set(repo, (merged.get(repo) ?? 0) + count);
-      }
+      merged.push(...r.value.items);
     }
 
-    return Array.from(merged.entries())
-      .map(([repo, count]) => ({ repo, count }))
-      .sort((a, b) => b.count - a.count || a.repo.localeCompare(b.repo));
+    // Sort by repo then number for a stable order. The UI groups by repo for
+    // the drill-down view, so a stable per-repo ordering keeps results
+    // predictable across refreshes.
+    merged.sort(
+      (a, b) => a.repo.localeCompare(b.repo) || a.number - b.number,
+    );
+    return merged;
   };
 
   const [assigned, reviewing] = await Promise.all([

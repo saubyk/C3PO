@@ -8,7 +8,7 @@ import {
 import {
   getDeveloperWorkload,
   type DeveloperWorkload,
-  type RepoCount,
+  type WorkloadItem,
   type WorkloadWarning,
 } from "./developer.js";
 
@@ -22,8 +22,8 @@ export type RosterResponse = {
 export type WorkloadResponse = {
   login: string;
   orgs: string[];
-  assigned: RepoCount[];
-  reviewing: RepoCount[];
+  assigned: WorkloadItem[];
+  reviewing: WorkloadItem[];
   warnings: WorkloadWarning[];
 };
 

@@ -62,9 +62,12 @@ export type RosterResponse = {
   configErrors: string[];
 };
 
-export type RepoCount = {
+export type WorkloadItem = {
+  kind: "Issue" | "PullRequest";
   repo: string;
-  count: number;
+  number: number;
+  title: string;
+  url: string;
 };
 
 export type WorkloadWarning = {
@@ -75,7 +78,7 @@ export type WorkloadWarning = {
 export type WorkloadResponse = {
   login: string;
   orgs: string[];
-  assigned: RepoCount[];
-  reviewing: RepoCount[];
+  assigned: WorkloadItem[];
+  reviewing: WorkloadItem[];
   warnings: WorkloadWarning[];
 };

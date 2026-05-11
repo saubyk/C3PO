@@ -329,6 +329,36 @@ Pick a developer in the left rail → two pie charts render within a second on c
 
 ---
 
+## Milestone 11 — Workload drill-down (slice → item list)
+
+**Goal.** Make the donut charts actionable: clicking a slice (or its legend row) opens a list of the underlying items below the chart grid (FR-W11).
+
+### Tasks
+
+1. Expand the workload data shape end-to-end. The search GraphQL keeps the same `type: ISSUE`, `first: 100`, paginated structure but now selects `__typename, number, title, url, repository.nameWithOwner` for each Issue/PullRequest node. The data layer returns flat `WorkloadItem[]` for `assigned` and `reviewing` instead of pre-aggregated `RepoCount[]`. Per-repo counts become a UI-side derivation.
+2. Update `WorkloadResponse` in `server/src/workload/service.ts` and `web/src/types.ts` to carry items. The 90s API cache key and the rate-limit / cap warnings are unchanged.
+3. In `<WorkloadCharts>`, hold a single `selection: { kind: "assigned" | "reviewing"; repo: string } | null` state. Wire `onClick` on both the `<Pie>` and each legend `<li>` to toggle that selection. Selection is single-across-both-charts: picking a slice in one clears any selection in the other.
+4. Visually mark the selected slice (raised stroke, full opacity) and dim non-selected slices when something is selected. Mark the matching legend row with a subtle background + `aria-pressed`.
+5. Render a drill-down panel below the chart grid when a selection exists. Header: color swatch, `<repo>` (mono), kind label, count, Close button. Rows: type icon (PR vs Issue), `<short-repo>#<number>`, title, `<a target="_blank" rel="noopener noreferrer">` to the GitHub URL. The panel is capped at ~45% of the chart area and scrolls internally so the charts stay visible.
+6. Reset the selection when the developer changes (login dependency). Don't persist it in the URL.
+
+### Verification
+
+- Click a slice → list opens with the right items for that `(kind, repo)`.
+- Click a legend row → same effect as clicking the slice.
+- Click the same slice again, or the Close button → list closes.
+- Click a slice in the other chart while one is open → selection swaps; the first chart goes back to its "unselected" appearance.
+- Switch developer in the left rail → selection clears.
+- A developer with > 1000 open items in one query still surfaces the existing cap warning; the list shows what was fetched.
+
+### Claude Code notes
+
+- The search query is the same network shape; only the node selection grew. Don't add a parallel "fetch items by repo" query — the data is already there.
+- Resist promoting `DrillDownPanel` to a shared component. It's specific to this layout and only used here.
+- Slice clicks fire on the `<Pie>`, not on individual `<Cell>` elements (Recharts wires it that way). The handler receives the payload — pull `repo` off `payload.payload`.
+
+---
+
 ## Recurring patterns when working with Claude Code on this
 
 A few things worth doing consistently across all milestones:

@@ -109,8 +109,31 @@ const ROSTER: RosterResponse = {
 const WORKLOAD_ALICE: WorkloadResponse = {
   login: "alice",
   orgs: ["lightningnetwork", "lightninglabs"],
-  assigned: [{ repo: "lightningnetwork/lnd", count: 6 }],
-  reviewing: [{ repo: "lightningnetwork/lnd", count: 2 }],
+  assigned: [
+    {
+      kind: "Issue",
+      repo: "lightningnetwork/lnd",
+      number: 100,
+      title: "Investigate flake in itest",
+      url: "https://github.com/lightningnetwork/lnd/issues/100",
+    },
+    {
+      kind: "PullRequest",
+      repo: "lightningnetwork/lnd",
+      number: 101,
+      title: "Fix BOLT 12 parser edge case",
+      url: "https://github.com/lightningnetwork/lnd/pull/101",
+    },
+  ],
+  reviewing: [
+    {
+      kind: "PullRequest",
+      repo: "lightningnetwork/lnd",
+      number: 200,
+      title: "Add fee bumping helper",
+      url: "https://github.com/lightningnetwork/lnd/pull/200",
+    },
+  ],
   warnings: [],
 };
 
