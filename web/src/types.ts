@@ -27,7 +27,7 @@ export type ProjectItem = {
   url: string;
   state: string;
   assignees: User[];
-  requestedReviewers: User[];
+  reviewers: User[];
   fields: Record<string, FieldValue>;
 };
 

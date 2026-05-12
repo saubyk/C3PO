@@ -120,7 +120,7 @@ export function deriveTeam(items: ProjectItem[]): TeamMember[] {
   for (const item of items) {
     for (const u of item.assignees) bump(u, "assigned");
     if (item.contentType === "PullRequest") {
-      for (const u of item.requestedReviewers) bump(u, "reviewing");
+      for (const u of item.reviewers) bump(u, "reviewing");
     }
   }
   return Array.from(m.values())

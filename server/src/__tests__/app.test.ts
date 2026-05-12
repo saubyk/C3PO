@@ -62,7 +62,7 @@ const ITEMS: ProjectItem[] = [
     url: "https://github.com/x/y/issues/1",
     state: "OPEN",
     assignees: [alice],
-    requestedReviewers: [],
+    reviewers: [],
     fields: {
       Status: {
         kind: "single_select",
@@ -79,7 +79,7 @@ const ITEMS: ProjectItem[] = [
     url: "https://github.com/x/y/pull/2",
     state: "OPEN",
     assignees: [bob],
-    requestedReviewers: [alice],
+    reviewers: [alice],
     fields: {
       Status: {
         kind: "single_select",

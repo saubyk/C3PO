@@ -40,7 +40,7 @@ function FlatView({
 }) {
   const visible = items
     .filter((i) =>
-      i.requestedReviewers.some((u) => u.login === selectedLogin),
+      i.reviewers.some((u) => u.login === selectedLogin),
     )
     .sort(sortItems);
   if (visible.length === 0) {
@@ -60,7 +60,7 @@ function FlatView({
 }
 
 function GroupedView({ items }: { items: ProjectItem[] }) {
-  const groups = groupByUser(items, (item) => item.requestedReviewers);
+  const groups = groupByUser(items, (item) => item.reviewers);
   if (groups.length === 0) {
     return (
       <p className="px-3 py-2 text-xs text-gray-500">

@@ -29,7 +29,10 @@ export type ProjectItem = {
   url: string;
   state: string;
   assignees: User[];
-  requestedReviewers: User[];
+  // Union of currently-requested reviewers and people who have already
+  // submitted a review. GitHub clears a user from `reviewRequests` once they
+  // submit a review, so a "requested only" view loses anyone mid-review.
+  reviewers: User[];
   fields: Record<string, FieldValue>;
 };
 
@@ -66,6 +69,14 @@ type RawIssueOrPR = {
   reviewRequests?: {
     nodes: Array<{
       requestedReviewer:
+        | (RawUser & { __typename: string })
+        | { __typename: string }
+        | null;
+    }>;
+  };
+  latestReviews?: {
+    nodes: Array<{
+      author:
         | (RawUser & { __typename: string })
         | { __typename: string }
         | null;
@@ -240,6 +251,14 @@ const PROJECT_ITEMS_QUERY = `
                 }
               }
             }
+            latestReviews(first: 20) {
+              nodes {
+                author {
+                  __typename
+                  ... on User { login name avatarUrl }
+                }
+              }
+            }
           }
         }
       }
@@ -391,16 +410,8 @@ function resolveItem(node: RawProjectItem): ProjectItem | null {
     return null;
   }
   const c = node.content as RawIssueOrPR;
-  const requestedReviewers: User[] =
-    tn === "PullRequest"
-      ? (c.reviewRequests?.nodes ?? [])
-          .map((rr) => rr.requestedReviewer)
-          .filter(
-            (rr): rr is RawUser & { __typename: string } =>
-              !!rr && rr.__typename === "User" && "login" in rr,
-          )
-          .map(toUser)
-      : [];
+  const reviewers: User[] =
+    tn === "PullRequest" ? collectReviewers(c) : [];
   return {
     id: node.id,
     contentType: tn,
@@ -409,9 +420,32 @@ function resolveItem(node: RawProjectItem): ProjectItem | null {
     url: c.url,
     state: c.state,
     assignees: c.assignees.nodes.map(toUser),
-    requestedReviewers,
+    reviewers,
     fields: extractFields(node.fieldValues.nodes),
   };
+}
+
+function collectReviewers(c: RawIssueOrPR): User[] {
+  const seen = new Set<string>();
+  const out: User[] = [];
+  const requested = (c.reviewRequests?.nodes ?? [])
+    .map((rr) => rr.requestedReviewer)
+    .filter(isUserNode);
+  const reviewed = (c.latestReviews?.nodes ?? [])
+    .map((r) => r.author)
+    .filter(isUserNode);
+  for (const u of [...requested, ...reviewed]) {
+    if (seen.has(u.login)) continue;
+    seen.add(u.login);
+    out.push(toUser(u));
+  }
+  return out;
+}
+
+function isUserNode(
+  n: (RawUser & { __typename: string }) | { __typename: string } | null,
+): n is RawUser & { __typename: string } {
+  return !!n && n.__typename === "User" && "login" in n;
 }
 
 function toUser(u: RawUser): User {
