@@ -44,7 +44,7 @@ export const ALL = "All";
 export function passesStatus(item: ProjectItem, filter: string): boolean {
   const status = singleSelect(item, "Status");
   if (filter === ALL) return true;
-  if (filter === HIDE_DONE) return status !== "Done";
+  if (filter === HIDE_DONE) return !/\bdone\b/i.test(status ?? "");
   return status === filter;
 }
 
