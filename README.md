@@ -19,7 +19,8 @@ Two tabs:
 Single-user tool. Runs on your laptop, reads from `github.com` via a Personal
 Access Token in a local `.env`. Read-only — never writes to GitHub.
 
-<img width="1646" height="978" alt="image" src="https://github.com/user-attachments/assets/e8a09526-5959-452a-9aa0-6b9d18d41537" />
+<img width="1646" height="959" alt="image" src="https://github.com/user-attachments/assets/0633c283-5f6b-4874-9bc6-4f9dde6b8915" />
+
 
 
 ## Quick start
