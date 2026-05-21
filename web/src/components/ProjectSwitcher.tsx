@@ -27,7 +27,7 @@ export function ProjectSwitcher({ projects, active, onChange }: Props) {
         if (!owner || !num) return;
         onChange({ owner, number: Number(num) });
       }}
-      className="text-sm border border-gray-200 rounded px-2 py-1 bg-white text-gray-800 focus:outline-none focus:ring-1 focus:ring-blue-300 max-w-xs disabled:opacity-50"
+      className="text-sm border border-line rounded px-2 py-1 bg-panel2 text-fg focus:outline-none focus:ring-1 focus:ring-accent max-w-xs disabled:opacity-50"
     >
       <option value="">
         {projects ? "Pick a project…" : "Loading projects…"}

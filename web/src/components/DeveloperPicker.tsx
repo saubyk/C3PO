@@ -20,7 +20,7 @@ export function DeveloperPicker({ roster, selectedLogin, onSelect }: Props) {
 
   if (roster.length === 0) {
     return (
-      <p className="px-3 py-2 text-xs text-gray-500">
+      <p className="px-3 py-2 text-xs text-muted">
         No developers in the configured roster.
       </p>
     );
@@ -52,7 +52,7 @@ export function DeveloperPicker({ roster, selectedLogin, onSelect }: Props) {
       tabIndex={0}
       aria-activedescendant={focused ? `developer-${focused.login}` : undefined}
       onKeyDown={handleKey}
-      className="divide-y divide-gray-100 outline-none focus:ring-1 focus:ring-blue-300"
+      className="divide-y divide-line outline-none focus:ring-1 focus:ring-accent"
     >
       {roster.map((m, i) => {
         const isSelected = selectedLogin === m.login;
@@ -68,9 +68,9 @@ export function DeveloperPicker({ roster, selectedLogin, onSelect }: Props) {
               "flex items-center gap-2 px-3 py-1.5 cursor-pointer",
               "border-l-2",
               isSelected
-                ? "bg-blue-50 border-blue-500"
-                : "border-transparent hover:bg-gray-50",
-              isFocused && !isSelected ? "bg-gray-50" : "",
+                ? "bg-accent/10 border-accent"
+                : "border-transparent hover:bg-panel2",
+              isFocused && !isSelected ? "bg-panel2" : "",
             ].join(" ")}
           >
             <img
@@ -80,7 +80,7 @@ export function DeveloperPicker({ roster, selectedLogin, onSelect }: Props) {
               height={20}
               className="rounded-full shrink-0"
             />
-            <span className="text-sm flex-1 truncate">{m.login}</span>
+            <span className="text-sm flex-1 truncate text-fg">{m.login}</span>
           </li>
         );
       })}

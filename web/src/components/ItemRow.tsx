@@ -27,21 +27,21 @@ export function ItemRow({ item }: { item: ProjectItem }) {
         : CircleDot;
 
   const iconColor = isMerged
-    ? "text-purple-600"
+    ? "text-purple-400"
     : isClosedNotMerged
-      ? "text-red-600"
-      : "text-green-600";
+      ? "text-red-400"
+      : "text-emerald-400";
 
   return (
     <a
       href={item.url}
       target="_blank"
       rel="noreferrer noopener"
-      className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 border-b border-gray-100 text-sm leading-tight"
+      className="flex items-center gap-2 px-3 py-1.5 hover:bg-panel2 border-b border-line text-sm leading-tight"
     >
       <Icon className={`${iconColor} shrink-0`} size={14} />
-      <span className="font-mono text-xs text-gray-500 shrink-0">#{item.number}</span>
-      <span className="truncate text-gray-900 flex-1">{item.title}</span>
+      <span className="font-mono text-xs text-muted shrink-0">#{item.number}</span>
+      <span className="truncate text-fg flex-1">{item.title}</span>
       <span className="flex items-center gap-1 shrink-0">
         {status && <Pill kind="status" value={status} />}
         <AgeBadge updatedAt={statusUpdatedAt} />

@@ -9,7 +9,7 @@ import { AssigneeList } from "../components/AssigneeList";
 import { AssignedColumn } from "../components/AssignedColumn";
 import { ReviewColumn } from "../components/ReviewColumn";
 import { EmptyState } from "../components/EmptyState";
-import { SkeletonRows } from "../components/Skeletons";
+import { C3POLoader } from "../components/C3POLoader";
 import {
   NetworkErrorBanner,
   RateLimitBanner,
@@ -205,7 +205,7 @@ export default function SprintBoardRoute() {
           >
             <ColumnHeader title="Assignees" />
             {items.isPending ? (
-              <SkeletonRows count={8} />
+              <C3POLoader label="Loading assignees" />
             ) : (
               <AssigneeList
                 team={team}
@@ -223,7 +223,7 @@ export default function SprintBoardRoute() {
           >
             <ColumnHeader title="Assigned" />
             {items.isPending ? (
-              <SkeletonRows count={6} variant="wide" />
+              <C3POLoader label="Loading assigned" />
             ) : (
               <AssignedColumn
                 items={filtered}
@@ -242,7 +242,7 @@ export default function SprintBoardRoute() {
           >
             <ColumnHeader title="Reviewing" />
             {items.isPending ? (
-              <SkeletonRows count={6} variant="wide" />
+              <C3POLoader label="Loading reviewing" />
             ) : (
               <ReviewColumn
                 items={filtered}
@@ -306,14 +306,14 @@ function ResizeHandle() {
     <Separator
       aria-label="Resize column"
       style={{ width: 4 }}
-      className="bg-gray-200 hover:bg-blue-300 active:bg-blue-500 transition-colors"
+      className="bg-line hover:bg-accent/40 active:bg-accent transition-colors"
     />
   );
 }
 
 function ColumnHeader({ title }: { title: string }) {
   return (
-    <div className="px-3 py-2 border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 sticky top-0 bg-white z-10">
+    <div className="px-3 py-2 border-b border-line text-xs uppercase tracking-widest text-accent sticky top-0 bg-panel hud-scanlines z-10">
       {title}
     </div>
   );

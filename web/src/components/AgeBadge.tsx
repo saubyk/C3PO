@@ -31,7 +31,7 @@ function ageString(ms: number): string {
 
 function ageTone(ms: number): string {
   const days = ms / DAY_MS;
-  if (days <= 3) return "text-gray-400";
-  if (days <= 7) return "text-amber-600";
-  return "text-red-600";
+  if (days <= 3) return "text-muted";
+  if (days <= 7) return "text-amber-400";
+  return "text-red-400";
 }

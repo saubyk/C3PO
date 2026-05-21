@@ -17,26 +17,26 @@ type Props = {
   onModeChange: (mode: ChartMode) => void;
 };
 
-// Tailwind-aligned palette; cycled deterministically across repos so a single
-// repo gets the same color in both pies (and across renders).
+// Dark-friendly palette (Tailwind 400 shades) cycled deterministically across
+// repos so a single repo gets the same color in both pies and across renders.
 const PALETTE = [
-  "#3b82f6", // blue-500
-  "#10b981", // emerald-500
-  "#f59e0b", // amber-500
-  "#ef4444", // red-500
-  "#8b5cf6", // violet-500
-  "#06b6d4", // cyan-500
-  "#84cc16", // lime-500
-  "#ec4899", // pink-500
-  "#f97316", // orange-500
-  "#14b8a6", // teal-500
+  "#60a5fa", // blue-400
+  "#34d399", // emerald-400
+  "#fbbf24", // amber-400
+  "#f87171", // red-400
+  "#a78bfa", // violet-400
+  "#22d3ee", // cyan-400
+  "#a3e635", // lime-400
+  "#f472b6", // pink-400
+  "#fb923c", // orange-400
+  "#2dd4bf", // teal-400
 ];
 
 function buildColorMap(allRepos: string[]): Map<string, string> {
   const sorted = [...new Set(allRepos)].sort();
   const map = new Map<string, string>();
   sorted.forEach((repo, i) => {
-    map.set(repo, PALETTE[i % PALETTE.length] ?? "#9ca3af");
+    map.set(repo, PALETTE[i % PALETTE.length] ?? "#94a3b8");
   });
   return map;
 }
@@ -95,15 +95,17 @@ export function WorkloadCharts({
 
   return (
     <div className="flex-1 min-h-0 flex flex-col">
-      <div className="px-4 py-2 border-b border-gray-200 flex items-center gap-3 shrink-0">
-        <h2 className="text-sm font-semibold text-gray-900">
-          Workload — <span className="font-mono">{login}</span>
+      <div className="px-4 py-2 border-b border-line bg-panel hud-scanlines flex items-center gap-3 shrink-0">
+        <h2 className="text-sm font-semibold">
+          <span className="uppercase tracking-widest text-accent">Workload</span>{" "}
+          <span className="text-muted">—</span>{" "}
+          <span className="font-mono text-fg">{login}</span>
         </h2>
-        <span className="text-xs text-gray-500">
+        <span className="text-xs text-muted">
           {assignedTotal + reviewingTotal} open{" "}
           {assignedTotal + reviewingTotal === 1 ? "item" : "items"}
         </span>
-        <span className="ml-auto inline-flex rounded border border-gray-200 overflow-hidden text-xs">
+        <span className="ml-auto inline-flex rounded border border-line overflow-hidden text-xs">
           <ToggleButton
             active={mode === "counts"}
             onClick={() => onModeChange("counts")}
@@ -146,7 +148,7 @@ export function WorkloadCharts({
         <DrillDownPanel
           kind={selection.kind}
           repo={selection.repo}
-          color={colorMap.get(selection.repo) ?? "#9ca3af"}
+          color={colorMap.get(selection.repo) ?? "#94a3b8"}
           items={drillItems}
           onClose={() => setSelection(null)}
         />
@@ -181,13 +183,16 @@ function ChartCard({
   const somethingSelected = selection !== null;
 
   return (
-    <section className="flex flex-col border border-gray-200 rounded-md bg-white">
-      <header className="px-3 py-2 border-b border-gray-100 flex items-baseline gap-2">
-        <h3 className="text-sm font-medium text-gray-900">{title}</h3>
-        <span className="text-xs text-gray-500 tabular-nums">({total})</span>
+    <section className="relative flex flex-col border border-line bg-panel">
+      <CornerBrackets />
+      <header className="px-3 py-2 border-b border-line bg-panel hud-scanlines flex items-baseline gap-2">
+        <h3 className="text-xs font-medium uppercase tracking-widest text-accent">
+          {title}
+        </h3>
+        <span className="text-xs text-muted tabular-nums">({total})</span>
       </header>
       {data.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center p-6 text-xs text-gray-500 text-center">
+        <div className="flex-1 flex items-center justify-center p-6 text-xs text-muted text-center">
           {emptyMessage}
         </div>
       ) : (
@@ -216,15 +221,24 @@ function ChartCard({
                     return (
                       <Cell
                         key={entry.repo}
-                        fill={colorMap.get(entry.repo) ?? "#9ca3af"}
+                        fill={colorMap.get(entry.repo) ?? "#94a3b8"}
                         fillOpacity={dim ? 0.35 : 1}
-                        stroke={isSelected ? "#111827" : "#fff"}
+                        stroke={isSelected ? "#e5e7eb" : "#0f1424"}
                         strokeWidth={isSelected ? 2 : 1}
                       />
                     );
                   })}
                 </Pie>
                 <Tooltip
+                  contentStyle={{
+                    backgroundColor: "#131a2e",
+                    border: "1px solid #2a3350",
+                    borderRadius: 4,
+                    color: "#c9d1e0",
+                    fontSize: 12,
+                  }}
+                  itemStyle={{ color: "#c9d1e0" }}
+                  labelStyle={{ color: "#6b7593" }}
                   formatter={(value, _name, item) => {
                     const n = typeof value === "number" ? value : Number(value);
                     const repo = String(
@@ -249,21 +263,21 @@ function ChartCard({
                     className={[
                       "w-full flex items-center gap-2 leading-tight px-1 py-0.5 rounded text-left",
                       isSelected
-                        ? "bg-gray-100 ring-1 ring-gray-300"
-                        : "hover:bg-gray-50",
+                        ? "bg-accent/10 ring-1 ring-accent/40"
+                        : "hover:bg-panel2",
                     ].join(" ")}
                   >
                     <span
                       aria-hidden="true"
                       className="h-2.5 w-2.5 rounded-sm shrink-0"
                       style={{
-                        backgroundColor: colorMap.get(d.repo) ?? "#9ca3af",
+                        backgroundColor: colorMap.get(d.repo) ?? "#94a3b8",
                       }}
                     />
-                    <span className="flex-1 truncate text-gray-700">
+                    <span className="flex-1 truncate text-fg">
                       {shortenRepo(d.repo)}
                     </span>
-                    <span className="tabular-nums text-gray-500 shrink-0">
+                    <span className="tabular-nums text-muted shrink-0">
                       {formatValue(d.count, total, mode)}
                     </span>
                   </button>
@@ -292,69 +306,83 @@ function DrillDownPanel({
 }) {
   const kindLabel = kind === "assigned" ? "Assigned" : "Reviewing";
   return (
-    <div className="shrink-0 max-h-[45%] min-h-[160px] border-t border-gray-200 bg-gray-50 flex flex-col">
-      <header className="px-3 py-2 flex items-center gap-2 border-b border-gray-200 bg-gray-50 sticky top-0 z-10">
+    <div className="shrink-0 max-h-[45%] min-h-[160px] border-t border-line bg-panel2 flex flex-col">
+      <header className="px-3 py-2 flex items-center gap-2 border-b border-line bg-panel2 hud-scanlines sticky top-0 z-10">
         <span
           aria-hidden="true"
           className="h-2.5 w-2.5 rounded-sm shrink-0"
           style={{ backgroundColor: color }}
         />
-        <span className="text-xs font-medium text-gray-900 font-mono truncate">
+        <span className="text-xs font-medium text-fg font-mono truncate">
           {repo}
         </span>
-        <span className="text-xs text-gray-400">·</span>
-        <span className="text-xs text-gray-700">{kindLabel}</span>
-        <span className="text-xs text-gray-400">·</span>
-        <span className="text-xs tabular-nums text-gray-600">
+        <span className="text-xs text-muted">·</span>
+        <span className="text-xs text-fg">{kindLabel}</span>
+        <span className="text-xs text-muted">·</span>
+        <span className="text-xs tabular-nums text-muted">
           {items.length} {items.length === 1 ? "item" : "items"}
         </span>
         <button
           type="button"
           onClick={onClose}
           aria-label="Close drill-down list"
-          className="ml-auto inline-flex items-center gap-1 text-xs text-gray-500 hover:text-gray-900"
+          className="ml-auto inline-flex items-center gap-1 text-xs text-muted hover:text-fg"
         >
           <X size={12} />
           Close
         </button>
       </header>
       {items.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center p-4 text-xs text-gray-500">
+        <div className="flex-1 flex items-center justify-center p-4 text-xs text-muted">
           No items.
         </div>
       ) : (
-        <ul className="flex-1 overflow-y-auto divide-y divide-gray-200">
+        <ul className="flex-1 overflow-y-auto divide-y divide-line">
           {items.map((item) => (
             <li key={`${item.repo}#${item.number}`}>
               <a
                 href={item.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-2 px-3 py-1.5 text-xs leading-snug hover:bg-white"
+                className="flex items-center gap-2 px-3 py-1.5 text-xs leading-snug hover:bg-panel"
               >
                 {item.kind === "PullRequest" ? (
                   <GitPullRequest
                     size={12}
-                    className="text-emerald-600 shrink-0"
+                    className="text-emerald-400 shrink-0"
                     aria-label="Pull request"
                   />
                 ) : (
                   <CircleDot
                     size={12}
-                    className="text-blue-600 shrink-0"
+                    className="text-accent shrink-0"
                     aria-label="Issue"
                   />
                 )}
-                <span className="font-mono text-gray-500 shrink-0">
+                <span className="font-mono text-muted shrink-0">
                   {shortenRepo(item.repo)}#{item.number}
                 </span>
-                <span className="text-gray-800 truncate">{item.title}</span>
+                <span className="text-fg truncate">{item.title}</span>
               </a>
             </li>
           ))}
         </ul>
       )}
     </div>
+  );
+}
+
+function CornerBrackets() {
+  // L-shaped cyan ticks at each corner. Pointer-events-none so they don't
+  // intercept clicks on the panel content. Container must be `relative`.
+  const common = "absolute w-3 h-3 border-accent pointer-events-none";
+  return (
+    <>
+      <span className={`${common} top-0 left-0 border-t-2 border-l-2`} />
+      <span className={`${common} top-0 right-0 border-t-2 border-r-2`} />
+      <span className={`${common} bottom-0 left-0 border-b-2 border-l-2`} />
+      <span className={`${common} bottom-0 right-0 border-b-2 border-r-2`} />
+    </>
   );
 }
 
@@ -375,8 +403,8 @@ function ToggleButton({
       className={[
         "px-2 py-0.5",
         active
-          ? "bg-blue-50 text-blue-700"
-          : "text-gray-600 hover:bg-gray-50",
+          ? "bg-accent/15 text-accent"
+          : "text-muted hover:bg-panel2",
       ].join(" ")}
     >
       {label}

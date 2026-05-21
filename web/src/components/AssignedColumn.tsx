@@ -41,7 +41,7 @@ function FlatView({
     .sort(sortItems);
   if (visible.length === 0) {
     return (
-      <p className="px-3 py-2 text-xs text-gray-500">
+      <p className="px-3 py-2 text-xs text-muted">
         Nothing assigned to <span className="font-mono">@{selectedLogin}</span>.
       </p>
     );
@@ -58,16 +58,16 @@ function FlatView({
 function GroupedView({ items }: { items: ProjectItem[] }) {
   const groups = groupByUser(items, (item) => item.assignees);
   if (groups.length === 0) {
-    return <p className="px-3 py-2 text-xs text-gray-500">No assigned items.</p>;
+    return <p className="px-3 py-2 text-xs text-muted">No assigned items.</p>;
   }
   return (
     <div>
       {groups.map((g) => (
         <section key={g.user.login}>
-          <header className="flex items-center gap-2 px-3 py-1 bg-gray-50 border-b border-gray-200 text-xs text-gray-700">
+          <header className="flex items-center gap-2 px-3 py-1 bg-panel border-b border-line text-xs text-fg">
             <Avatar user={g.user} size={16} />
             <span className="font-medium">{g.user.login}</span>
-            <span className="text-gray-500 tabular-nums">{g.items.length}</span>
+            <span className="text-muted tabular-nums">{g.items.length}</span>
           </header>
           {g.items.map((item) => (
             <ItemRow key={item.id} item={item} />

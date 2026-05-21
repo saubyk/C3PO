@@ -1,30 +1,31 @@
 // Pinned color map. Locked early so refactors don't drift the palette.
+// Dark-mode: tinted background at low opacity + bright text.
 
 const STATUS_CLASS: Record<string, string> = {
-  "In progress": "bg-blue-100 text-blue-800",
-  "In review": "bg-purple-100 text-purple-800",
-  "Ready": "bg-amber-100 text-amber-800",
-  "Todo": "bg-gray-100 text-gray-800",
-  "Backlog": "bg-gray-100 text-gray-800",
-  "Done": "bg-green-100 text-green-800",
+  "In progress": "bg-blue-500/15 text-blue-300",
+  "In review": "bg-purple-500/15 text-purple-300",
+  "Ready": "bg-amber-500/15 text-amber-300",
+  "Todo": "bg-slate-500/15 text-slate-300",
+  "Backlog": "bg-slate-500/15 text-slate-300",
+  "Done": "bg-emerald-500/15 text-emerald-300",
 };
 
 const PRIORITY_CLASS: Record<string, string> = {
-  "P0": "bg-red-100 text-red-800",
-  "P1": "bg-orange-100 text-orange-800",
-  "P2": "bg-yellow-100 text-yellow-800",
-  "P3": "bg-yellow-100 text-yellow-800",
+  "P0": "bg-red-500/20 text-red-300",
+  "P1": "bg-orange-500/15 text-orange-300",
+  "P2": "bg-yellow-500/15 text-yellow-300",
+  "P3": "bg-yellow-500/15 text-yellow-300",
 };
 
 const SIZE_CLASS: Record<string, string> = {
-  "XS": "bg-gray-100 text-gray-700",
-  "S": "bg-gray-100 text-gray-700",
-  "M": "bg-slate-100 text-slate-700",
-  "L": "bg-slate-200 text-slate-800",
-  "XL": "bg-slate-300 text-slate-900",
+  "XS": "bg-slate-500/10 text-slate-400",
+  "S": "bg-slate-500/10 text-slate-400",
+  "M": "bg-slate-500/15 text-slate-300",
+  "L": "bg-slate-500/20 text-slate-200",
+  "XL": "bg-slate-500/25 text-slate-100",
 };
 
-const FALLBACK = "bg-gray-100 text-gray-700";
+const FALLBACK = "bg-slate-500/15 text-slate-300";
 
 export type PillKind = "status" | "priority" | "size";
 

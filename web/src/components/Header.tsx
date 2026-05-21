@@ -19,7 +19,7 @@ type Props = {
 
 export function Header(props: Props) {
   return (
-    <header className="flex items-center gap-3 border-b border-gray-200 px-4 h-10 bg-white shrink-0">
+    <header className="flex items-center gap-3 border-b border-line px-4 h-10 bg-panel hud-scanlines shrink-0">
       <ProjectSwitcher
         projects={props.projects}
         active={props.activeProject}
@@ -39,13 +39,13 @@ export function Header(props: Props) {
           onChange={props.onPriorityChange}
         />
       </div>
-      <span className="ml-auto flex items-center gap-3 text-xs text-gray-500">
+      <span className="ml-auto flex items-center gap-3 text-xs text-muted">
         <button
           type="button"
           onClick={props.onRefresh}
           disabled={props.refreshing}
           aria-label="Refresh data from GitHub"
-          className="inline-flex items-center gap-1 hover:text-gray-700 disabled:opacity-50 disabled:cursor-wait"
+          className="inline-flex items-center gap-1 hover:text-fg disabled:opacity-50 disabled:cursor-wait"
         >
           <RefreshCw
             size={12}
@@ -76,13 +76,13 @@ function FilterSelect({
   onChange: (next: string) => void;
 }) {
   return (
-    <label className="flex items-center gap-1 text-xs text-gray-500">
+    <label className="flex items-center gap-1 text-xs text-muted">
       {label}:
       <select
         aria-label={`${label} filter`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="border border-gray-200 rounded px-1.5 py-0.5 bg-white text-gray-700 text-xs focus:outline-none focus:ring-1 focus:ring-blue-300"
+        className="border border-line rounded px-1.5 py-0.5 bg-panel2 text-fg text-xs focus:outline-none focus:ring-1 focus:ring-accent"
       >
         {options.map((o) => (
           <option key={o} value={o}>

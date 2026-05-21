@@ -45,7 +45,7 @@ function FlatView({
     .sort(sortItems);
   if (visible.length === 0) {
     return (
-      <p className="px-3 py-2 text-xs text-gray-500">
+      <p className="px-3 py-2 text-xs text-muted">
         Nothing waiting on <span className="font-mono">@{selectedLogin}</span>.
       </p>
     );
@@ -63,7 +63,7 @@ function GroupedView({ items }: { items: ProjectItem[] }) {
   const groups = groupByUser(items, (item) => item.reviewers);
   if (groups.length === 0) {
     return (
-      <p className="px-3 py-2 text-xs text-gray-500">
+      <p className="px-3 py-2 text-xs text-muted">
         Nothing in the review queue.
       </p>
     );
@@ -72,10 +72,10 @@ function GroupedView({ items }: { items: ProjectItem[] }) {
     <div>
       {groups.map((g) => (
         <section key={g.user.login}>
-          <header className="flex items-center gap-2 px-3 py-1 bg-gray-50 border-b border-gray-200 text-xs text-gray-700">
+          <header className="flex items-center gap-2 px-3 py-1 bg-panel border-b border-line text-xs text-fg">
             <Avatar user={g.user} size={16} />
             <span className="font-medium">{g.user.login}</span>
-            <span className="text-gray-500 tabular-nums">{g.items.length}</span>
+            <span className="text-muted tabular-nums">{g.items.length}</span>
           </header>
           {g.items.map((item) => (
             <ItemRow key={item.id} item={item} />

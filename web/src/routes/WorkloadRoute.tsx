@@ -18,7 +18,7 @@ import {
   NetworkErrorBanner,
   RateLimitBanner,
 } from "../components/ErrorBanner";
-import { SkeletonRows } from "../components/Skeletons";
+import { C3POLoader } from "../components/C3POLoader";
 
 export default function WorkloadRoute() {
   const { boardSelectedLogin } = useOutletContext<AppOutletContext>();
@@ -99,8 +99,8 @@ export default function WorkloadRoute() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <header className="flex items-center gap-3 border-b border-gray-200 px-4 h-10 bg-white shrink-0">
-        <span className="text-xs text-gray-500">
+      <header className="flex items-center gap-3 border-b border-line px-4 h-10 bg-panel hud-scanlines shrink-0">
+        <span className="text-xs text-muted">
           {roster.data
             ? `${roster.data.roster.length} developer${
                 roster.data.roster.length === 1 ? "" : "s"
@@ -111,13 +111,13 @@ export default function WorkloadRoute() {
               ? "Loading roster…"
               : ""}
         </span>
-        <span className="ml-auto flex items-center gap-3 text-xs text-gray-500">
+        <span className="ml-auto flex items-center gap-3 text-xs text-muted">
           <button
             type="button"
             onClick={handleRefresh}
             disabled={refreshing || !roster.data}
             aria-label="Refresh workload data from GitHub"
-            className="inline-flex items-center gap-1 hover:text-gray-700 disabled:opacity-50 disabled:cursor-wait"
+            className="inline-flex items-center gap-1 hover:text-fg disabled:opacity-50 disabled:cursor-wait"
           >
             <RefreshCw
               size={12}
@@ -166,12 +166,12 @@ export default function WorkloadRoute() {
       )}
 
       <div className="flex-1 min-h-0 flex">
-        <aside className="w-56 shrink-0 border-r border-gray-200 overflow-y-auto flex flex-col">
-          <div className="px-3 py-2 border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500 sticky top-0 bg-white z-10">
+        <aside className="w-56 shrink-0 border-r border-line overflow-y-auto flex flex-col">
+          <div className="px-3 py-2 border-b border-line text-xs uppercase tracking-widest text-accent sticky top-0 bg-panel hud-scanlines z-10">
             Developers
           </div>
           {roster.isPending ? (
-            <SkeletonRows count={10} />
+            <C3POLoader label="Loading roster" />
           ) : (
             <DeveloperPicker
               roster={roster.data?.roster ?? []}
@@ -190,7 +190,7 @@ export default function WorkloadRoute() {
               onModeChange={setMode}
             />
           ) : selected && workload.isPending ? (
-            <SkeletonRows count={4} variant="wide" />
+            <C3POLoader label="Loading workload" />
           ) : (
             <EmptyState
               title="Pick a developer to see their workload distribution."
@@ -222,7 +222,7 @@ function RosterWarningsBanner({
   return (
     <div
       role="status"
-      className="bg-amber-50 border-b border-amber-200 text-amber-900 text-xs px-4 py-2 shrink-0"
+      className="bg-amber-500/10 border-b border-amber-500/30 text-amber-200 text-xs px-4 py-2 shrink-0"
     >
       <p className="font-medium">
         {warnings.length + configErrors.length} issue

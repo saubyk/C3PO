@@ -1,1 +1,54 @@
 @import "tailwindcss";
+
+@theme {
+  --color-bg: #0a0e1a;
+  --color-panel: #0f1424;
+  --color-panel2: #131a2e;
+  --color-line: #1c2237;
+  --color-line2: #2a3350;
+  --color-fg: #c9d1e0;
+  --color-muted: #6b7593;
+  --color-accent: #38bdf8;
+  --color-accent-soft: #0e7490;
+  --color-warn: #f59e0b;
+  --color-gold: #d4af37;
+  --color-eye: #ffd966;
+}
+
+@layer base {
+  html,
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    color-scheme: dark;
+  }
+}
+
+/* Subtle horizontal scan lines for HUD chrome surfaces (nav, panel
+   headers, etc.). Applied on top of the existing background-color, so
+   compose with `bg-panel` / `bg-panel2`. Cyan tint keeps it on-theme. */
+.hud-scanlines {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(56, 189, 248, 0.08) 0,
+    rgba(56, 189, 248, 0.08) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* C-3PO loader: photoreceptors flicker briefly every cycle. */
+@keyframes c3po-blink {
+  0%, 88%, 100% { opacity: 1; }
+  90%, 94%      { opacity: 0; }
+}
+
+.c3po-eye {
+  animation: c3po-blink 2.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .c3po-eye {
+    animation: none;
+  }
+}
