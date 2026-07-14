@@ -1,6 +1,6 @@
-import { RefreshCw } from "lucide-react";
 import type { ProjectSummary } from "../types";
 import { ProjectSwitcher, type ActiveProject } from "./ProjectSwitcher";
+import { SELECT_CLASS, SubToolbar, SyncCluster, ToolbarLabel } from "./Toolbar";
 
 type Props = {
   projects: ProjectSummary[] | undefined;
@@ -17,50 +17,37 @@ type Props = {
   onPriorityChange: (next: string) => void;
 };
 
+// Sprint Board sub-toolbar: SPRINT / STATUS / PRIORITY selects + sync cluster.
 export function Header(props: Props) {
   return (
-    <header className="flex items-center gap-3 border-b border-line px-4 h-10 bg-panel hud-scanlines shrink-0">
-      <ProjectSwitcher
-        projects={props.projects}
-        active={props.activeProject}
-        onChange={props.onActiveProjectChange}
+    <SubToolbar>
+      <label className="flex items-center gap-2 min-w-0">
+        <ToolbarLabel>Sprint</ToolbarLabel>
+        <ProjectSwitcher
+          projects={props.projects}
+          active={props.activeProject}
+          onChange={props.onActiveProjectChange}
+        />
+      </label>
+      <FilterSelect
+        label="Status"
+        value={props.statusFilter}
+        options={props.statusOptions}
+        onChange={props.onStatusChange}
       />
-      <div className="flex items-center gap-3 ml-2">
-        <FilterSelect
-          label="Status"
-          value={props.statusFilter}
-          options={props.statusOptions}
-          onChange={props.onStatusChange}
-        />
-        <FilterSelect
-          label="Priority"
-          value={props.priorityFilter}
-          options={props.priorityOptions}
-          onChange={props.onPriorityChange}
-        />
-      </div>
-      <span className="ml-auto flex items-center gap-3 text-xs text-muted">
-        <button
-          type="button"
-          onClick={props.onRefresh}
-          disabled={props.refreshing}
-          aria-label="Refresh data from GitHub"
-          className="inline-flex items-center gap-1 hover:text-fg disabled:opacity-50 disabled:cursor-wait"
-        >
-          <RefreshCw
-            size={12}
-            className={props.refreshing ? "animate-spin" : undefined}
-          />
-          Refresh
-        </button>
-        <span>
-          Last updated{" "}
-          {props.lastUpdated
-            ? formatHHMM(props.lastUpdated)
-            : <span aria-hidden="true">—</span>}
-        </span>
-      </span>
-    </header>
+      <FilterSelect
+        label="Priority"
+        value={props.priorityFilter}
+        options={props.priorityOptions}
+        onChange={props.onPriorityChange}
+      />
+      <SyncCluster
+        lastUpdated={props.lastUpdated}
+        onRefresh={props.onRefresh}
+        refreshing={props.refreshing}
+        refreshLabel="Refresh data from GitHub"
+      />
+    </SubToolbar>
   );
 }
 
@@ -76,13 +63,13 @@ function FilterSelect({
   onChange: (next: string) => void;
 }) {
   return (
-    <label className="flex items-center gap-1 text-xs text-muted">
-      {label}:
+    <label className="flex items-center gap-2">
+      <ToolbarLabel>{label}</ToolbarLabel>
       <select
         aria-label={`${label} filter`}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="border border-line rounded px-1.5 py-0.5 bg-panel2 text-fg text-xs focus:outline-none focus:ring-1 focus:ring-accent"
+        className={SELECT_CLASS}
       >
         {options.map((o) => (
           <option key={o} value={o}>
@@ -92,12 +79,4 @@ function FilterSelect({
       </select>
     </label>
   );
-}
-
-function formatHHMM(ms: number): string {
-  return new Date(ms).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
 }

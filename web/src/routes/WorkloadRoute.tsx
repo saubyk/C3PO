@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { RefreshCw } from "lucide-react";
 import type { AppOutletContext } from "../App";
 import {
   ApiError,
@@ -14,6 +13,8 @@ import {
   type ChartMode,
 } from "../components/WorkloadCharts";
 import { EmptyState } from "../components/EmptyState";
+import { PaneHeader } from "../components/PaneHeader";
+import { SubToolbar, SyncCluster, ToolbarLabel } from "../components/Toolbar";
 import {
   NetworkErrorBanner,
   RateLimitBanner,
@@ -21,7 +22,8 @@ import {
 import { C3POLoader } from "../components/C3POLoader";
 
 export default function WorkloadRoute() {
-  const { boardSelectedLogin } = useOutletContext<AppOutletContext>();
+  const { boardSelectedLogin, setStatusMeta } =
+    useOutletContext<AppOutletContext>();
   const queryClient = useQueryClient();
 
   const roster = useWorkloadRoster();
@@ -29,30 +31,38 @@ export default function WorkloadRoute() {
   // The picker's selection. Seeded once from the Sprint Board's current
   // selection (FR-W4 carry-over) — afterward it's owned by this route.
   // Carry-over is one-way (FR-W10): we never write back to the AppShell.
+  // There is no dead landing state: when the carry-over fails or the board
+  // had no selection, the first roster member is auto-selected.
   const [selected, setSelected] = useState<string | null>(null);
   const [seededFor, setSeededFor] = useState<string | null>(null);
   const [mode, setMode] = useState<ChartMode>("counts");
   const [bannerDismissedAt, setBannerDismissedAt] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
-  // When the roster arrives, attempt to carry the Sprint Board's selection
-  // into the picker. Only do this once per board-login value so a later
-  // user-driven change isn't overwritten.
   useEffect(() => {
     if (!roster.data) return;
-    if (seededFor === boardSelectedLogin) return;
-    setSeededFor(boardSelectedLogin);
-    if (!boardSelectedLogin) {
-      setSelected(null);
+    const first = roster.data.roster[0]?.login ?? null;
+    if (seededFor !== boardSelectedLogin) {
+      setSeededFor(boardSelectedLogin);
+      const inRoster =
+        !!boardSelectedLogin &&
+        roster.data.roster.some((m) => m.login === boardSelectedLogin);
+      setSelected(inRoster ? boardSelectedLogin : first);
       return;
     }
-    const inRoster = roster.data.roster.some(
-      (m) => m.login === boardSelectedLogin,
-    );
-    setSelected(inRoster ? boardSelectedLogin : null);
-  }, [roster.data, boardSelectedLogin, seededFor]);
+    // Covers roster arriving with nothing to seed from (or a deselection).
+    if (!selected && first) setSelected(first);
+  }, [roster.data, boardSelectedLogin, seededFor, selected]);
 
   const workload = useDeveloperWorkload(selected);
+
+  // Feed the status footer: org count + roster size.
+  useEffect(() => {
+    setStatusMeta({
+      sector: roster.data ? `${roster.data.orgs.length} ORGS` : null,
+      lifeforms: roster.data?.roster.length ?? null,
+    });
+  }, [setStatusMeta, roster.data]);
 
   const handleRefresh = useCallback(async () => {
     if (refreshing) return;
@@ -71,21 +81,6 @@ export default function WorkloadRoute() {
     }
   }, [refreshing, selected, queryClient]);
 
-  // FR-W4 hint: Sprint Board had a selection but it isn't in the roster.
-  // Show this only when the picker is empty *because of* a failed carry-over,
-  // i.e. the user hasn't already overridden it.
-  const carryOverHint = useMemo(() => {
-    if (!roster.data) return null;
-    if (!boardSelectedLogin) return null;
-    if (seededFor !== boardSelectedLogin) return null;
-    if (selected) return null;
-    const inRoster = roster.data.roster.some(
-      (m) => m.login === boardSelectedLogin,
-    );
-    if (inRoster) return null;
-    return boardSelectedLogin;
-  }, [roster.data, boardSelectedLogin, seededFor, selected]);
-
   const lastUpdated = workload.dataUpdatedAt || roster.dataUpdatedAt;
   const liveError =
     (workload.error as unknown) ?? (roster.error as unknown) ?? null;
@@ -99,42 +94,42 @@ export default function WorkloadRoute() {
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
-      <header className="flex items-center gap-3 border-b border-line px-4 h-10 bg-panel hud-scanlines shrink-0">
-        <span className="text-xs text-muted">
+      <SubToolbar>
+        <ToolbarLabel>
           {roster.data
-            ? `${roster.data.roster.length} developer${
-                roster.data.roster.length === 1 ? "" : "s"
-              } · ${roster.data.orgs.length} org${
-                roster.data.orgs.length === 1 ? "" : "s"
+            ? `${roster.data.roster.length} DEVELOPERS · ${roster.data.orgs.length} ${
+                roster.data.orgs.length === 1 ? "ORG" : "ORGS"
               }`
             : roster.isPending
-              ? "Loading roster…"
+              ? "SCANNING ROSTER…"
               : ""}
-        </span>
-        <span className="ml-auto flex items-center gap-3 text-xs text-muted">
-          <button
-            type="button"
-            onClick={handleRefresh}
-            disabled={refreshing || !roster.data}
-            aria-label="Refresh workload data from GitHub"
-            className="inline-flex items-center gap-1 hover:text-fg disabled:opacity-50 disabled:cursor-wait"
+        </ToolbarLabel>
+        <span className="ml-auto flex items-center gap-3">
+          <span
+            className="inline-flex border border-line2 rounded overflow-hidden font-mono text-[10px] uppercase tracking-[.06em]"
+            role="group"
+            aria-label="Chart value mode"
           >
-            <RefreshCw
-              size={12}
-              className={refreshing ? "animate-spin" : undefined}
+            <ModeButton
+              active={mode === "counts"}
+              onClick={() => setMode("counts")}
+              label="Counts"
             />
-            Refresh
-          </button>
-          <span>
-            Last updated{" "}
-            {lastUpdated ? (
-              formatHHMM(lastUpdated)
-            ) : (
-              <span aria-hidden="true">—</span>
-            )}
+            <ModeButton
+              active={mode === "percentages"}
+              onClick={() => setMode("percentages")}
+              label="%"
+            />
           </span>
+          <SyncCluster
+            lastUpdated={lastUpdated || undefined}
+            onRefresh={handleRefresh}
+            refreshing={refreshing}
+            refreshDisabled={!roster.data}
+            refreshLabel="Refresh workload data from GitHub"
+          />
         </span>
-      </header>
+      </SubToolbar>
 
       {showErrorBanner &&
         liveError instanceof ApiError &&
@@ -166,18 +161,22 @@ export default function WorkloadRoute() {
       )}
 
       <div className="flex-1 min-h-0 flex">
-        <aside className="w-56 shrink-0 border-r border-line overflow-y-auto flex flex-col">
-          <div className="px-3 py-2 border-b border-line text-xs uppercase tracking-widest text-accent sticky top-0 bg-panel hud-scanlines z-10">
-            Developers
-          </div>
+        <aside className="w-[236px] shrink-0 border-r border-line bg-panel flex flex-col min-h-0">
+          <PaneHeader
+            title="Developers"
+            count={roster.data?.roster.length}
+            countLabel="TRACKED"
+          />
           {roster.isPending ? (
             <C3POLoader label="Loading roster" />
           ) : (
-            <DeveloperPicker
-              roster={roster.data?.roster ?? []}
-              selectedLogin={selected}
-              onSelect={setSelected}
-            />
+            <div className="flex-1 overflow-y-auto min-h-0">
+              <DeveloperPicker
+                roster={roster.data?.roster ?? []}
+                selectedLogin={selected}
+                onSelect={setSelected}
+              />
+            </div>
           )}
         </aside>
         <section className="flex-1 min-h-0 flex flex-col">
@@ -187,28 +186,44 @@ export default function WorkloadRoute() {
               assigned={workload.data.assigned}
               reviewing={workload.data.reviewing}
               mode={mode}
-              onModeChange={setMode}
             />
-          ) : selected && workload.isPending ? (
+          ) : selected || roster.isPending ? (
             <C3POLoader label="Loading workload" />
           ) : (
             <EmptyState
-              title="Pick a developer to see their workload distribution."
-              detail={
-                carryOverHint ? (
-                  <>
-                    <span className="font-mono">{carryOverHint}</span> isn't in
-                    the configured workload roster.
-                  </>
-                ) : roster.data && roster.data.roster.length === 0 ? (
-                  "Set WORKLOAD_TEAMS in .env to populate the roster."
-                ) : null
-              }
+              title="NO LIFEFORMS ON SCANNER."
+              detail="Set WORKLOAD_TEAMS in .env to populate the roster."
             />
           )}
         </section>
       </div>
     </div>
+  );
+}
+
+function ModeButton({
+  active,
+  onClick,
+  label,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={[
+        "px-2.5 py-1",
+        active
+          ? "bg-[rgba(86,200,245,.15)] text-accent"
+          : "text-faint hover:text-fg",
+      ].join(" ")}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -222,9 +237,9 @@ function RosterWarningsBanner({
   return (
     <div
       role="status"
-      className="bg-amber-500/10 border-b border-amber-500/30 text-amber-200 text-xs px-4 py-2 shrink-0"
+      className="bg-amber/10 border-b border-amber/30 text-amber font-mono text-[11px] px-4 py-2 shrink-0"
     >
-      <p className="font-medium">
+      <p className="font-semibold uppercase tracking-[.04em]">
         {warnings.length + configErrors.length} issue
         {warnings.length + configErrors.length === 1 ? "" : "s"} with
         WORKLOAD_TEAMS configuration:
@@ -243,12 +258,4 @@ function RosterWarningsBanner({
       </ul>
     </div>
   );
-}
-
-function formatHHMM(ms: number): string {
-  return new Date(ms).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
 }

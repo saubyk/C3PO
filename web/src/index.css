@@ -1,18 +1,35 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #0a0e1a;
-  --color-panel: #0f1424;
-  --color-panel2: #131a2e;
-  --color-line: #1c2237;
-  --color-line2: #2a3350;
-  --color-fg: #c9d1e0;
-  --color-muted: #6b7593;
-  --color-accent: #38bdf8;
-  --color-accent-soft: #0e7490;
-  --color-warn: #f59e0b;
-  --color-gold: #d4af37;
+  /* surfaces */
+  --color-bg: #0a111e;
+  --color-panel: #0b1322; /* rail / pane bg */
+  --color-panel2: #0d1830; /* raised: inputs, drilldown header */
+  --color-raised: #101c30; /* selects, band gradient start, donut track */
+  --color-chrome: #0c1424; /* top bar / footer */
+  --color-line: rgba(110, 150, 210, 0.12);
+  --color-line2: rgba(110, 150, 210, 0.25);
+  /* text */
+  --color-fg: #e8eef7;
+  --color-body: #a9bad4;
+  --color-muted: #7e93b3;
+  --color-muted2: #8fa5c6;
+  --color-faint: #55688a;
+  --color-number: #6f86a8;
+  /* accents */
+  --color-accent: #56c8f5;
+  --color-gold: #f0c05a;
+  --color-gold-name: #f0d78c;
+  --color-green: #55d187;
+  --color-violet: #a78bfa;
+  --color-red: #ff6b6b;
+  --color-amber: #f5b83d;
+  --color-stale: #c98a4b;
   --color-eye: #ffd966;
+  /* fonts — --font-mono override makes every font-mono usage IBM Plex Mono */
+  --font-display: "Chakra Petch", ui-sans-serif, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-body: "Barlow", ui-sans-serif, sans-serif;
 }
 
 @layer base {
@@ -21,20 +38,98 @@
     background-color: var(--color-bg);
     color: var(--color-fg);
     color-scheme: dark;
+    font-family: var(--font-body);
+  }
+
+  ::selection {
+    background: rgba(86, 200, 245, 0.3);
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1b2a44;
+    border-radius: 5px;
+    border: 2px solid var(--color-bg);
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
   }
 }
 
-/* Subtle horizontal scan lines for HUD chrome surfaces (nav, panel
-   headers, etc.). Applied on top of the existing background-color, so
-   compose with `bg-panel` / `bg-panel2`. Cyan tint keeps it on-theme. */
-.hud-scanlines {
+/* Console flavor: static CRT grid + a slow cyan sweep band. Both are
+   full-viewport fixed overlays; pointer-events-none is applied where they
+   are rendered (App.tsx) so they never block interaction. */
+.crt-scanlines {
   background-image: repeating-linear-gradient(
-    to bottom,
-    rgba(56, 189, 248, 0.08) 0,
-    rgba(56, 189, 248, 0.08) 1px,
-    transparent 1px,
-    transparent 3px
+    0deg,
+    rgba(0, 0, 0, 0.12) 0 1px,
+    transparent 1px 3px
   );
+}
+
+@keyframes scan-sweep {
+  from {
+    top: -12%;
+  }
+  to {
+    top: 112%;
+  }
+}
+
+.scan-sweep {
+  height: 90px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(86, 200, 245, 0.035),
+    transparent
+  );
+  animation: scan-sweep 9s linear infinite;
+}
+
+/* 8x8 gold targeting brackets: top-left + bottom-right corner marks on
+   every pane header. */
+.bracket-header {
+  position: relative;
+}
+
+.bracket-header::before,
+.bracket-header::after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  pointer-events: none;
+}
+
+.bracket-header::before {
+  top: 4px;
+  left: 4px;
+  border-top: 1px solid var(--color-gold);
+  border-left: 1px solid var(--color-gold);
+}
+
+.bracket-header::after {
+  bottom: 4px;
+  right: 4px;
+  border-bottom: 1px solid var(--color-gold);
+  border-right: 1px solid var(--color-gold);
+}
+
+@keyframes uplink-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.uplink-dot {
+  animation: uplink-blink 2.4s ease-in-out infinite;
 }
 
 /* C-3PO loader: photoreceptors flicker briefly every cycle. */
@@ -48,6 +143,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .scan-sweep,
+  .uplink-dot,
   .c3po-eye {
     animation: none;
   }

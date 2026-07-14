@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { CircleDot, GitPullRequest, X } from "lucide-react";
+import { Cell, Pie, PieChart, Tooltip } from "recharts";
 import type { WorkloadItem } from "../types";
+import { DROID_EMPTY, EmptyState } from "./EmptyState";
+import { PaneHeader } from "./PaneHeader";
 
 export type ChartMode = "counts" | "percentages";
 
@@ -14,32 +15,30 @@ type Props = {
   assigned: WorkloadItem[];
   reviewing: WorkloadItem[];
   mode: ChartMode;
-  onModeChange: (mode: ChartMode) => void;
 };
 
-// Dark-friendly palette (Tailwind 400 shades) cycled deterministically across
-// repos so a single repo gets the same color in both pies and across renders.
-const PALETTE = [
-  "#60a5fa", // blue-400
-  "#34d399", // emerald-400
-  "#fbbf24", // amber-400
-  "#f87171", // red-400
-  "#a78bfa", // violet-400
-  "#22d3ee", // cyan-400
-  "#a3e635", // lime-400
-  "#f472b6", // pink-400
-  "#fb923c", // orange-400
-  "#2dd4bf", // teal-400
-];
+// One repo→color mapping shared by both charts (design refinement: the old
+// version colored the same repo differently per chart). Keyed by short repo
+// name; anything unknown gets the fallback steel-blue.
+const REPO_COLORS: Record<string, string> = {
+  "lightning-infra": "#55d187",
+  paymentservice: "#ff7a72",
+  lnd: "#56c8f5",
+  nautilus: "#f5b83d",
+  subasta: "#a78bfa",
+  "eng-brain": "#5aa2e8",
+  btcd: "#e88fc6",
+  "lightning-terminal": "#6ee7d0",
+  neutrino: "#c9d16b",
+};
 
-function buildColorMap(allRepos: string[]): Map<string, string> {
-  const sorted = [...new Set(allRepos)].sort();
-  const map = new Map<string, string>();
-  sorted.forEach((repo, i) => {
-    map.set(repo, PALETTE[i % PALETTE.length] ?? "#94a3b8");
-  });
-  return map;
+const REPO_FALLBACK = "#7d93b8";
+
+function repoColor(repo: string): string {
+  return REPO_COLORS[shortenRepo(repo)] ?? REPO_FALLBACK;
 }
+
+const DRILL_CAP = 12;
 
 function countByRepo(items: WorkloadItem[]): RepoCount[] {
   const m = new Map<string, number>();
@@ -49,13 +48,7 @@ function countByRepo(items: WorkloadItem[]): RepoCount[] {
   );
 }
 
-export function WorkloadCharts({
-  login,
-  assigned,
-  reviewing,
-  mode,
-  onModeChange,
-}: Props) {
+export function WorkloadCharts({ login, assigned, reviewing, mode }: Props) {
   const [selection, setSelection] = useState<Selection>(null);
 
   // Reset slice selection whenever the developer changes — a stale selection
@@ -66,18 +59,6 @@ export function WorkloadCharts({
 
   const assignedCounts = useMemo(() => countByRepo(assigned), [assigned]);
   const reviewingCounts = useMemo(() => countByRepo(reviewing), [reviewing]);
-
-  const colorMap = useMemo(
-    () =>
-      buildColorMap([
-        ...assignedCounts.map((r) => r.repo),
-        ...reviewingCounts.map((r) => r.repo),
-      ]),
-    [assignedCounts, reviewingCounts],
-  );
-
-  const assignedTotal = sumCount(assignedCounts);
-  const reviewingTotal = sumCount(reviewingCounts);
 
   const handleSelect = (kind: Kind, repo: string) => {
     setSelection((prev) =>
@@ -94,321 +75,289 @@ export function WorkloadCharts({
   }, [selection, assigned, reviewing]);
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col">
-      <div className="px-4 py-2 border-b border-line bg-panel hud-scanlines flex items-center gap-3 shrink-0">
-        <h2 className="text-sm font-semibold">
-          <span className="uppercase tracking-widest text-accent">Workload</span>{" "}
-          <span className="text-muted">—</span>{" "}
-          <span className="font-mono text-fg">{login}</span>
-        </h2>
-        <span className="text-xs text-muted">
-          {assignedTotal + reviewingTotal} open{" "}
-          {assignedTotal + reviewingTotal === 1 ? "item" : "items"}
-        </span>
-        <span className="ml-auto inline-flex rounded border border-line overflow-hidden text-xs">
-          <ToggleButton
-            active={mode === "counts"}
-            onClick={() => onModeChange("counts")}
-            label="Counts"
-          />
-          <ToggleButton
-            active={mode === "percentages"}
-            onClick={() => onModeChange("percentages")}
-            label="%"
-          />
-        </span>
-      </div>
-
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 overflow-y-auto">
-        <ChartCard
-          kind="assigned"
-          title="Assigned"
-          total={assignedTotal}
-          data={assignedCounts}
-          mode={mode}
-          colorMap={colorMap}
-          selection={selection}
-          onSelect={handleSelect}
-          emptyMessage="No open assigned items in the configured orgs."
-        />
-        <ChartCard
-          kind="reviewing"
-          title="Reviewing"
-          total={reviewingTotal}
-          data={reviewingCounts}
-          mode={mode}
-          colorMap={colorMap}
-          selection={selection}
-          onSelect={handleSelect}
-          emptyMessage="No open PRs awaiting review."
-        />
-      </div>
-
-      {selection && (
-        <DrillDownPanel
-          kind={selection.kind}
-          repo={selection.repo}
-          color={colorMap.get(selection.repo) ?? "#94a3b8"}
-          items={drillItems}
-          onClose={() => setSelection(null)}
-        />
-      )}
+    <div className="flex-1 min-h-0 grid grid-cols-2">
+      <WorkloadPanel
+        kind="assigned"
+        title="Assigned"
+        data={assignedCounts}
+        mode={mode}
+        selection={selection}
+        drillItems={drillItems}
+        onSelect={handleSelect}
+        onCloseDrill={() => setSelection(null)}
+        emptyDetail="NO OPEN ASSIGNED ITEMS IN THE CONFIGURED ORGS."
+      />
+      <WorkloadPanel
+        kind="reviewing"
+        title="Reviewing"
+        data={reviewingCounts}
+        mode={mode}
+        selection={selection}
+        drillItems={drillItems}
+        onSelect={handleSelect}
+        onCloseDrill={() => setSelection(null)}
+        emptyDetail="NO OPEN PRS AWAITING REVIEW."
+      />
     </div>
   );
 }
 
-function ChartCard({
+function WorkloadPanel({
   kind,
   title,
-  total,
   data,
   mode,
-  colorMap,
   selection,
+  drillItems,
   onSelect,
-  emptyMessage,
+  onCloseDrill,
+  emptyDetail,
 }: {
   kind: Kind;
   title: string;
-  total: number;
   data: RepoCount[];
   mode: ChartMode;
-  colorMap: Map<string, string>;
   selection: Selection;
+  drillItems: WorkloadItem[];
   onSelect: (kind: Kind, repo: string) => void;
-  emptyMessage: string;
+  onCloseDrill: () => void;
+  emptyDetail: string;
 }) {
+  const total = sumCount(data);
   const selectedRepoHere =
     selection && selection.kind === kind ? selection.repo : null;
-  const somethingSelected = selection !== null;
 
   return (
-    <section className="relative flex flex-col border border-line bg-panel">
-      <CornerBrackets />
-      <header className="px-3 py-2 border-b border-line bg-panel hud-scanlines flex items-baseline gap-2">
-        <h3 className="text-xs font-medium uppercase tracking-widest text-accent">
-          {title}
-        </h3>
-        <span className="text-xs text-muted tabular-nums">({total})</span>
-      </header>
+    <section
+      className={[
+        "bg-panel flex flex-col min-h-0",
+        kind === "assigned" ? "border-r border-line" : "",
+      ].join(" ")}
+    >
+      <PaneHeader title={title} count={total} countLabel="ITEMS" />
       {data.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center p-6 text-xs text-muted text-center">
-          {emptyMessage}
-        </div>
+        <EmptyState compact title={DROID_EMPTY} detail={emptyDetail} />
       ) : (
-        <div className="flex-1 flex flex-col lg:flex-row gap-3 p-3 min-h-0">
-          <div className="flex-1 min-h-[180px] min-w-0">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={data}
-                  dataKey="count"
-                  nameKey="repo"
-                  innerRadius="45%"
-                  outerRadius="80%"
-                  paddingAngle={1}
-                  isAnimationActive={false}
-                  onClick={(payload: unknown) => {
-                    const repo = (payload as { payload?: { repo?: string } })
-                      ?.payload?.repo;
-                    if (repo) onSelect(kind, repo);
-                  }}
-                  style={{ cursor: "pointer" }}
-                >
-                  {data.map((entry) => {
-                    const isSelected = entry.repo === selectedRepoHere;
-                    const dim = somethingSelected && !isSelected;
-                    return (
-                      <Cell
-                        key={entry.repo}
-                        fill={colorMap.get(entry.repo) ?? "#94a3b8"}
-                        fillOpacity={dim ? 0.35 : 1}
-                        stroke={isSelected ? "#e5e7eb" : "#0f1424"}
-                        strokeWidth={isSelected ? 2 : 1}
+        <div className="flex-1 overflow-y-auto min-h-0 p-4">
+          <div className="flex gap-4 items-start">
+            <Donut
+              data={data}
+              total={total}
+              selectedRepo={selectedRepoHere}
+              onSelect={(repo) => onSelect(kind, repo)}
+              mode={mode}
+            />
+            <ul className="flex-1 min-w-0 space-y-0.5">
+              {data.map((d) => {
+                const isSelected = d.repo === selectedRepoHere;
+                const color = repoColor(d.repo);
+                return (
+                  <li key={d.repo}>
+                    <button
+                      type="button"
+                      onClick={() => onSelect(kind, d.repo)}
+                      aria-pressed={isSelected}
+                      title={d.repo}
+                      className={[
+                        "w-full grid grid-cols-[8px_auto_1fr_auto] items-center gap-2 px-2 py-[5px] rounded text-left",
+                        isSelected
+                          ? "bg-[rgba(86,200,245,.1)]"
+                          : "hover:bg-[rgba(86,200,245,.07)]",
+                      ].join(" ")}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className="h-2 w-2 rounded-[2px]"
+                        style={{ backgroundColor: color }}
                       />
-                    );
-                  })}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "#131a2e",
-                    border: "1px solid #2a3350",
-                    borderRadius: 4,
-                    color: "#c9d1e0",
-                    fontSize: 12,
-                  }}
-                  itemStyle={{ color: "#c9d1e0" }}
-                  labelStyle={{ color: "#6b7593" }}
-                  formatter={(value, _name, item) => {
-                    const n = typeof value === "number" ? value : Number(value);
-                    const repo = String(
-                      (item as { payload?: { repo?: string } })?.payload?.repo ?? "",
-                    );
-                    return [formatValue(n, total, mode), repo];
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+                      <span className="font-mono text-[11px] text-[#dce6f5] truncate">
+                        {shortenRepo(d.repo)}
+                      </span>
+                      <span
+                        aria-hidden="true"
+                        className="h-[3px] rounded bg-line min-w-4"
+                      >
+                        <span
+                          className="block h-full rounded"
+                          style={{
+                            width: `${total ? (d.count / total) * 100 : 0}%`,
+                            backgroundColor: color,
+                            opacity: 0.7,
+                          }}
+                        />
+                      </span>
+                      <span className="font-mono text-[11px] text-muted2 tabular-nums text-right">
+                        {formatValue(d.count, total, mode)}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
-          <ul className="text-xs space-y-1 lg:w-44 shrink-0 overflow-y-auto">
-            {data.map((d) => {
-              const isSelected = d.repo === selectedRepoHere;
-              return (
-                <li key={d.repo}>
-                  <button
-                    type="button"
-                    onClick={() => onSelect(kind, d.repo)}
-                    aria-pressed={isSelected}
-                    title={d.repo}
-                    className={[
-                      "w-full flex items-center gap-2 leading-tight px-1 py-0.5 rounded text-left",
-                      isSelected
-                        ? "bg-accent/10 ring-1 ring-accent/40"
-                        : "hover:bg-panel2",
-                    ].join(" ")}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="h-2.5 w-2.5 rounded-sm shrink-0"
-                      style={{
-                        backgroundColor: colorMap.get(d.repo) ?? "#94a3b8",
-                      }}
-                    />
-                    <span className="flex-1 truncate text-fg">
-                      {shortenRepo(d.repo)}
-                    </span>
-                    <span className="tabular-nums text-muted shrink-0">
-                      {formatValue(d.count, total, mode)}
-                    </span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
+          {selectedRepoHere && (
+            <DrillDownCard
+              repo={selectedRepoHere}
+              items={drillItems}
+              onClose={onCloseDrill}
+            />
+          )}
         </div>
       )}
     </section>
   );
 }
 
-function DrillDownPanel({
-  kind,
+function Donut({
+  data,
+  total,
+  selectedRepo,
+  onSelect,
+  mode,
+}: {
+  data: RepoCount[];
+  total: number;
+  selectedRepo: string | null;
+  onSelect: (repo: string) => void;
+  mode: ChartMode;
+}) {
+  const somethingSelected = selectedRepo !== null;
+  return (
+    <div className="relative w-[150px] h-[150px] shrink-0">
+      <PieChart width={150} height={150}>
+        <Pie
+          data={data}
+          dataKey="count"
+          nameKey="repo"
+          cx="50%"
+          cy="50%"
+          innerRadius={51}
+          outerRadius={69}
+          paddingAngle={2}
+          startAngle={90}
+          endAngle={-270}
+          isAnimationActive={false}
+          onClick={(payload: unknown) => {
+            const repo = (payload as { payload?: { repo?: string } })
+              ?.payload?.repo;
+            if (repo) onSelect(repo);
+          }}
+          style={{ cursor: "pointer" }}
+        >
+          {data.map((entry) => {
+            const isSelected = entry.repo === selectedRepo;
+            const dim = somethingSelected && !isSelected;
+            return (
+              <Cell
+                key={entry.repo}
+                fill={repoColor(entry.repo)}
+                fillOpacity={dim ? 0.35 : 1}
+                stroke={isSelected ? "#e8eef7" : "var(--color-panel)"}
+                strokeWidth={isSelected ? 1.5 : 1}
+              />
+            );
+          })}
+        </Pie>
+        <Tooltip
+          contentStyle={{
+            backgroundColor: "var(--color-raised)",
+            border: "1px solid rgba(110,150,210,.25)",
+            borderRadius: 4,
+            fontFamily: "'IBM Plex Mono', monospace",
+            fontSize: 11,
+            color: "var(--color-fg)",
+          }}
+          itemStyle={{ color: "var(--color-fg)" }}
+          labelStyle={{ color: "var(--color-faint)" }}
+          formatter={(value, _name, item) => {
+            const n = typeof value === "number" ? value : Number(value);
+            const repo = String(
+              (item as { payload?: { repo?: string } })?.payload?.repo ?? "",
+            );
+            return [formatValue(n, total, mode), shortenRepo(repo)];
+          }}
+        />
+      </PieChart>
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none"
+      >
+        <span className="font-display font-bold text-[24px] leading-none text-fg">
+          {total}
+        </span>
+        <span className="font-mono text-[8.5px] tracking-[.16em] text-faint mt-1">
+          OPEN
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function DrillDownCard({
   repo,
-  color,
   items,
   onClose,
 }: {
-  kind: Kind;
   repo: string;
-  color: string;
   items: WorkloadItem[];
   onClose: () => void;
 }) {
-  const kindLabel = kind === "assigned" ? "Assigned" : "Reviewing";
+  const color = repoColor(repo);
+  const shown = items.slice(0, DRILL_CAP);
+  const more = items.length - shown.length;
   return (
-    <div className="shrink-0 max-h-[45%] min-h-[160px] border-t border-line bg-panel2 flex flex-col">
-      <header className="px-3 py-2 flex items-center gap-2 border-b border-line bg-panel2 hud-scanlines sticky top-0 z-10">
+    <div className="mt-3 border border-[rgba(86,200,245,.25)] rounded-md overflow-hidden">
+      <header className="bg-panel2 px-3 py-2 flex items-center gap-2">
         <span
           aria-hidden="true"
-          className="h-2.5 w-2.5 rounded-sm shrink-0"
+          className="h-2 w-2 rounded-[2px] shrink-0"
           style={{ backgroundColor: color }}
         />
-        <span className="text-xs font-medium text-fg font-mono truncate">
-          {repo}
+        <span className="font-mono text-[11px] text-fg truncate" title={repo}>
+          {shortenRepo(repo)}
         </span>
-        <span className="text-xs text-muted">·</span>
-        <span className="text-xs text-fg">{kindLabel}</span>
-        <span className="text-xs text-muted">·</span>
-        <span className="text-xs tabular-nums text-muted">
-          {items.length} {items.length === 1 ? "item" : "items"}
+        <span className="font-mono text-[10px] text-faint uppercase whitespace-nowrap">
+          {items.length} {items.length === 1 ? "ITEM" : "ITEMS"}
         </span>
         <button
           type="button"
           onClick={onClose}
           aria-label="Close drill-down list"
-          className="ml-auto inline-flex items-center gap-1 text-xs text-muted hover:text-fg"
+          className="ml-auto font-mono text-[11px] text-faint hover:text-fg leading-none"
         >
-          <X size={12} />
-          Close
+          ✕
         </button>
       </header>
-      {items.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center p-4 text-xs text-muted">
-          No items.
-        </div>
-      ) : (
-        <ul className="flex-1 overflow-y-auto divide-y divide-line">
-          {items.map((item) => (
-            <li key={`${item.repo}#${item.number}`}>
-              <a
-                href={item.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2 px-3 py-1.5 text-xs leading-snug hover:bg-panel"
-              >
-                {item.kind === "PullRequest" ? (
-                  <GitPullRequest
-                    size={12}
-                    className="text-emerald-400 shrink-0"
-                    aria-label="Pull request"
-                  />
-                ) : (
-                  <CircleDot
-                    size={12}
-                    className="text-accent shrink-0"
-                    aria-label="Issue"
-                  />
-                )}
-                <span className="font-mono text-muted shrink-0">
-                  {shortenRepo(item.repo)}#{item.number}
-                </span>
-                <span className="text-fg truncate">{item.title}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
+      <ul>
+        {shown.map((item) => (
+          <li key={`${item.repo}#${item.number}`}>
+            <a
+              href={item.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-3 py-1.5 border-t border-line hover:bg-[rgba(86,200,245,.06)]"
+            >
+              <span
+                aria-hidden="true"
+                className="h-1.5 w-1.5 rounded-full shrink-0"
+                style={{ backgroundColor: color }}
+              />
+              <span className="font-mono text-[10.5px] text-number shrink-0">
+                {shortenRepo(item.repo)}#{item.number}
+              </span>
+              <span className="font-body font-medium text-[13px] text-fg truncate">
+                {item.title}
+              </span>
+            </a>
+          </li>
+        ))}
+        {more > 0 && (
+          <li className="font-mono text-[10px] text-faint uppercase tracking-[.06em] px-3 py-1.5 border-t border-line">
+            + {more} MORE — FULL MANIFEST ON GITHUB
+          </li>
+        )}
+      </ul>
     </div>
-  );
-}
-
-function CornerBrackets() {
-  // L-shaped cyan ticks at each corner. Pointer-events-none so they don't
-  // intercept clicks on the panel content. Container must be `relative`.
-  const common = "absolute w-3 h-3 border-accent pointer-events-none";
-  return (
-    <>
-      <span className={`${common} top-0 left-0 border-t-2 border-l-2`} />
-      <span className={`${common} top-0 right-0 border-t-2 border-r-2`} />
-      <span className={`${common} bottom-0 left-0 border-b-2 border-l-2`} />
-      <span className={`${common} bottom-0 right-0 border-b-2 border-r-2`} />
-    </>
-  );
-}
-
-function ToggleButton({
-  active,
-  onClick,
-  label,
-}: {
-  active: boolean;
-  onClick: () => void;
-  label: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={[
-        "px-2 py-0.5",
-        active
-          ? "bg-accent/15 text-accent"
-          : "text-muted hover:bg-panel2",
-      ].join(" ")}
-    >
-      {label}
-    </button>
   );
 }
 

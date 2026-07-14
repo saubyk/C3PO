@@ -9,6 +9,7 @@ import { AssigneeList } from "../components/AssigneeList";
 import { AssignedColumn } from "../components/AssignedColumn";
 import { ReviewColumn } from "../components/ReviewColumn";
 import { EmptyState } from "../components/EmptyState";
+import { PaneHeader } from "../components/PaneHeader";
 import { C3POLoader } from "../components/C3POLoader";
 import {
   NetworkErrorBanner,
@@ -29,7 +30,7 @@ const ACTIVE_PROJECT_KEY = "c3po-active-project";
 
 export default function SprintBoardRoute() {
   const queryClient = useQueryClient();
-  const { boardSelectedLogin, setBoardSelectedLogin } =
+  const { boardSelectedLogin, setBoardSelectedLogin, setStatusMeta } =
     useOutletContext<AppOutletContext>();
 
   const [activeProject, setActiveProjectState] =
@@ -109,6 +110,22 @@ export default function SprintBoardRoute() {
     () => priorityOptions(allItems),
     [allItems],
   );
+
+  // Feed the status footer: active project title + tracked-people count.
+  const activeProjectTitle = useMemo(() => {
+    if (!verifiedActive || !projects.data) return null;
+    return (
+      projects.data.find(
+        (p) =>
+          p.owner === verifiedActive.owner &&
+          p.number === verifiedActive.number,
+      )?.title ?? null
+    );
+  }, [verifiedActive, projects.data]);
+
+  useEffect(() => {
+    setStatusMeta({ sector: activeProjectTitle, lifeforms: team.length });
+  }, [setStatusMeta, activeProjectTitle, team.length]);
 
   const handleRefresh = useCallback(async () => {
     if (refreshing) return;
@@ -198,30 +215,44 @@ export default function SprintBoardRoute() {
         >
           <Panel
             id="left"
-            defaultSize="18%"
+            defaultSize="16%"
             minSize="12%"
-            maxSize="30%"
-            className="overflow-y-auto flex flex-col"
+            maxSize="26%"
+            className="flex flex-col min-h-0 bg-panel"
           >
-            <ColumnHeader title="Assignees" />
+            <PaneHeader
+              title="Assignees"
+              count={team.length}
+              countLabel="TRACKED"
+            />
             {items.isPending ? (
               <C3POLoader label="Loading assignees" />
             ) : (
-              <AssigneeList
-                team={team}
-                selectedLogin={selectedLogin}
-                onSelect={setSelectedLogin}
-              />
+              <div className="flex-1 overflow-y-auto min-h-0">
+                {selectedLogin && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLogin(null)}
+                    className="block w-[calc(100%-16px)] m-2 px-2 py-1 font-mono text-[10px] text-gold border border-dashed border-[rgba(240,192,90,.5)] rounded hover:bg-gold/10 uppercase tracking-[.06em]"
+                  >
+                    ✕ CLEAR FILTER · SHOW ALL
+                  </button>
+                )}
+                <AssigneeList
+                  team={team}
+                  selectedLogin={selectedLogin}
+                  onSelect={setSelectedLogin}
+                />
+              </div>
             )}
           </Panel>
           <ResizeHandle />
           <Panel
             id="middle"
-            defaultSize="41%"
-            minSize="20%"
-            className="overflow-y-auto flex flex-col"
+            defaultSize="42%"
+            minSize="25%"
+            className="flex flex-col min-h-0"
           >
-            <ColumnHeader title="Assigned" />
             {items.isPending ? (
               <C3POLoader label="Loading assigned" />
             ) : (
@@ -236,11 +267,10 @@ export default function SprintBoardRoute() {
           <ResizeHandle />
           <Panel
             id="right"
-            defaultSize="41%"
-            minSize="20%"
-            className="overflow-y-auto flex flex-col"
+            defaultSize="42%"
+            minSize="25%"
+            className="flex flex-col min-h-0"
           >
-            <ColumnHeader title="Reviewing" />
             {items.isPending ? (
               <C3POLoader label="Loading reviewing" />
             ) : (
@@ -308,13 +338,5 @@ function ResizeHandle() {
       style={{ width: 4 }}
       className="bg-line hover:bg-accent/40 active:bg-accent transition-colors"
     />
-  );
-}
-
-function ColumnHeader({ title }: { title: string }) {
-  return (
-    <div className="px-3 py-2 border-b border-line text-xs uppercase tracking-widest text-accent sticky top-0 bg-panel hud-scanlines z-10">
-      {title}
-    </div>
   );
 }

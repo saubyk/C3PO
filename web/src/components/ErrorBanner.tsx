@@ -8,15 +8,15 @@ export function RateLimitBanner({
   return (
     <div
       role="alert"
-      className="bg-amber-500/10 border-b border-amber-500/30 text-amber-200 text-xs px-4 py-2 flex items-center gap-3 shrink-0"
+      className="bg-amber/10 border-b border-amber/30 text-amber font-mono text-[11px] uppercase tracking-[.04em] px-4 py-2 flex items-center gap-3 shrink-0"
     >
-      <span className="font-medium">GitHub rate limit hit.</span>
-      <span>Resets at {time}.</span>
+      <span className="font-semibold">GITHUB RATE LIMIT HIT.</span>
+      <span>RESETS AT {time}.</span>
       <button
         type="button"
         onClick={onDismiss}
         aria-label="Dismiss rate-limit banner"
-        className="ml-auto text-amber-300 hover:text-amber-100 font-bold leading-none"
+        className="ml-auto text-amber hover:text-fg font-bold leading-none"
       >
         ×
       </button>
@@ -32,14 +32,16 @@ export function NetworkErrorBanner({
   return (
     <div
       role="alert"
-      className="bg-red-500/10 border-b border-red-500/30 text-red-200 text-xs px-4 py-2 flex items-center gap-3 shrink-0"
+      className="bg-red/10 border-b border-red/30 text-red font-mono text-[11px] px-4 py-2 flex items-center gap-3 shrink-0"
     >
-      <span className="font-medium">Couldn’t reach GitHub.</span>
+      <span className="font-semibold uppercase tracking-[.04em]">
+        Couldn’t reach GitHub.
+      </span>
       <span className="truncate">{message}</span>
       <button
         type="button"
         onClick={onRetry}
-        className="ml-auto px-2 py-0.5 rounded border border-red-500/40 hover:bg-red-500/20 text-red-100"
+        className="ml-auto px-2 py-0.5 rounded border border-red/40 hover:bg-red/20 uppercase tracking-[.04em] whitespace-nowrap"
       >
         Retry
       </button>
@@ -47,7 +49,7 @@ export function NetworkErrorBanner({
         type="button"
         onClick={onDismiss}
         aria-label="Dismiss network-error banner"
-        className="text-red-300 hover:text-red-100 font-bold leading-none"
+        className="text-red hover:text-fg font-bold leading-none"
       >
         ×
       </button>

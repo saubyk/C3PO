@@ -13,7 +13,7 @@ export function C3POLoader({ label = "Loading", size = 80 }: Props) {
       aria-live="polite"
     >
       <C3POIcon size={size} blinking />
-      <span className="text-xs uppercase tracking-[0.15em] text-muted">
+      <span className="font-mono text-[11px] uppercase tracking-[0.15em] text-faint">
         {label}
       </span>
     </div>

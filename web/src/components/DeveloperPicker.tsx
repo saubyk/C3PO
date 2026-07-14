@@ -7,9 +7,9 @@ type Props = {
   onSelect: (login: string | null) => void;
 };
 
-// Visually consistent with AssigneeList (v0.1) but deliberately omits the
-// numeric badge — FR-W5 keeps the picker free of per-developer counts so
-// the page doesn't have to pre-fetch every workload up front.
+// Visually consistent with AssigneeList but deliberately omits the numeric
+// badge — FR-W5 keeps the picker free of per-developer counts so the page
+// doesn't have to pre-fetch every workload up front.
 export function DeveloperPicker({ roster, selectedLogin, onSelect }: Props) {
   const [focusIdx, setFocusIdx] = useState(0);
   const listRef = useRef<HTMLUListElement>(null);
@@ -20,7 +20,7 @@ export function DeveloperPicker({ roster, selectedLogin, onSelect }: Props) {
 
   if (roster.length === 0) {
     return (
-      <p className="px-3 py-2 text-xs text-muted">
+      <p className="px-3.5 py-2 font-mono text-[11px] text-faint uppercase">
         No developers in the configured roster.
       </p>
     );
@@ -52,7 +52,7 @@ export function DeveloperPicker({ roster, selectedLogin, onSelect }: Props) {
       tabIndex={0}
       aria-activedescendant={focused ? `developer-${focused.login}` : undefined}
       onKeyDown={handleKey}
-      className="divide-y divide-line outline-none focus:ring-1 focus:ring-accent"
+      className="outline-none focus:ring-1 focus:ring-accent"
     >
       {roster.map((m, i) => {
         const isSelected = selectedLogin === m.login;
@@ -65,22 +65,29 @@ export function DeveloperPicker({ roster, selectedLogin, onSelect }: Props) {
             aria-selected={isSelected}
             onClick={() => onSelect(isSelected ? null : m.login)}
             className={[
-              "flex items-center gap-2 px-3 py-1.5 cursor-pointer",
+              "flex items-center gap-2.5 pl-3 pr-3.5 py-[7px] cursor-pointer",
               "border-l-2",
               isSelected
-                ? "bg-accent/10 border-accent"
-                : "border-transparent hover:bg-panel2",
-              isFocused && !isSelected ? "bg-panel2" : "",
+                ? "bg-[rgba(86,200,245,.09)] border-gold"
+                : "border-transparent hover:bg-[rgba(86,200,245,.07)]",
+              isFocused && !isSelected ? "bg-[rgba(86,200,245,.05)]" : "",
             ].join(" ")}
           >
             <img
               src={m.avatarUrl}
               alt=""
-              width={20}
-              height={20}
+              width={22}
+              height={22}
               className="rounded-full shrink-0"
             />
-            <span className="text-sm flex-1 truncate text-fg">{m.login}</span>
+            <span
+              className={[
+                "text-[13px] font-medium flex-1 truncate",
+                isSelected ? "text-fg" : "text-body",
+              ].join(" ")}
+            >
+              {m.login}
+            </span>
           </li>
         );
       })}

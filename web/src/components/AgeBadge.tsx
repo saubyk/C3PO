@@ -11,7 +11,7 @@ export function AgeBadge({ updatedAt }: { updatedAt: string | null }) {
   return (
     <span
       title={`Status last changed ${new Date(updatedAt).toLocaleString()}`}
-      className={`text-[10px] tabular-nums ${tone}`}
+      className={`font-mono text-[10px] tabular-nums ${tone}`}
     >
       {text}
     </span>
@@ -31,7 +31,7 @@ function ageString(ms: number): string {
 
 function ageTone(ms: number): string {
   const days = ms / DAY_MS;
-  if (days <= 3) return "text-muted";
-  if (days <= 7) return "text-amber-400";
-  return "text-red-400";
+  if (days <= 3) return "text-faint";
+  if (days <= 7) return "text-amber";
+  return "text-stale";
 }

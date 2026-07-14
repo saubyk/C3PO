@@ -1,8 +1,10 @@
 import type { ProjectItem } from "../types";
-import { Avatar } from "./Avatar";
+import { DROID_EMPTY, EmptyState } from "./EmptyState";
+import { GroupBand } from "./GroupBand";
 import { ItemRow } from "./ItemRow";
+import { PaneHeader } from "./PaneHeader";
 import { SearchBox } from "./SearchBox";
-import { groupByUser, passesSearch, sortItems } from "./grouping";
+import { groupByPriority, groupByUser, passesSearch } from "./grouping";
 
 type Props = {
   items: ProjectItem[];
@@ -18,38 +20,53 @@ export function AssignedColumn({
   onSearchChange,
 }: Props) {
   const searched = items.filter((i) => passesSearch(i, search));
+  const visible = selectedLogin
+    ? searched.filter((i) =>
+        i.assignees.some((u) => u.login === selectedLogin),
+      )
+    : searched;
 
   return (
     <>
-      <SearchBox value={search} onChange={onSearchChange} />
-      {selectedLogin
-        ? <FlatView items={searched} selectedLogin={selectedLogin} />
-        : <GroupedView items={searched} />}
+      <PaneHeader title="Assigned" count={visible.length} countLabel="ITEMS">
+        <SearchBox value={search} onChange={onSearchChange} />
+      </PaneHeader>
+      {/* key remounts the scroll container when the assignee filter changes,
+          resetting scroll to the top. */}
+      <div
+        key={selectedLogin ?? "__all__"}
+        className="flex-1 overflow-y-auto min-h-0 pb-6"
+      >
+        {selectedLogin ? (
+          <PriorityView items={visible} />
+        ) : (
+          <GroupedView items={visible} />
+        )}
+      </div>
     </>
   );
 }
 
-function FlatView({
-  items,
-  selectedLogin,
-}: {
-  items: ProjectItem[];
-  selectedLogin: string;
-}) {
-  const visible = items
-    .filter((i) => i.assignees.some((u) => u.login === selectedLogin))
-    .sort(sortItems);
-  if (visible.length === 0) {
-    return (
-      <p className="px-3 py-2 text-xs text-muted">
-        Nothing assigned to <span className="font-mono">@{selectedLogin}</span>.
-      </p>
-    );
+function PriorityView({ items }: { items: ProjectItem[] }) {
+  const groups = groupByPriority(items);
+  if (groups.length === 0) {
+    return <EmptyState compact title={DROID_EMPTY} />;
   }
   return (
     <div>
-      {visible.map((item) => (
-        <ItemRow key={item.id} item={item} />
+      {groups.map((g) => (
+        <section key={g.band.key} className="mb-4">
+          <GroupBand
+            label={g.band.label}
+            labelColor={g.band.color}
+            badge={g.band.badge}
+            badgeColor={g.band.color}
+            count={g.items.length}
+          />
+          {g.items.map((item) => (
+            <ItemRow key={item.id} item={item} />
+          ))}
+        </section>
       ))}
     </div>
   );
@@ -58,17 +75,17 @@ function FlatView({
 function GroupedView({ items }: { items: ProjectItem[] }) {
   const groups = groupByUser(items, (item) => item.assignees);
   if (groups.length === 0) {
-    return <p className="px-3 py-2 text-xs text-muted">No assigned items.</p>;
+    return <EmptyState compact title={DROID_EMPTY} />;
   }
   return (
     <div>
       {groups.map((g) => (
-        <section key={g.user.login}>
-          <header className="flex items-center gap-2 px-3 py-1 bg-panel border-b border-line text-xs text-fg">
-            <Avatar user={g.user} size={16} />
-            <span className="font-medium">{g.user.login}</span>
-            <span className="text-muted tabular-nums">{g.items.length}</span>
-          </header>
+        <section key={g.user.login} className="mb-4">
+          <GroupBand
+            avatar={g.user}
+            label={g.user.login}
+            count={g.items.length}
+          />
           {g.items.map((item) => (
             <ItemRow key={item.id} item={item} />
           ))}

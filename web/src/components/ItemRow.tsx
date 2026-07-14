@@ -1,53 +1,34 @@
-import { CircleDot, CircleSlash, GitPullRequest, GitMerge } from "lucide-react";
 import type { ProjectItem } from "../types";
 import { AgeBadge } from "./AgeBadge";
-import { Pill } from "./Pill";
+import { PriorityChip, StatusDot, TypeTag } from "./chips";
+import { singleSelect } from "./grouping";
 
-function singleSelect(item: ProjectItem, name: string): string | null {
-  const v = item.fields[name];
-  return v?.kind === "single_select" ? v.optionName : null;
-}
-
+// One board row: priority chip | type tag | #number | title | age | status.
+// Size is deliberately not shown — it was noise (see design handoff).
 export function ItemRow({ item }: { item: ProjectItem }) {
   const status = singleSelect(item, "Status");
   const priority = singleSelect(item, "Priority");
-  const size = singleSelect(item, "Size");
   const statusUpdatedAt = item.fields.Status?.updatedAt ?? null;
-
-  const isPR = item.contentType === "PullRequest";
-  const isMerged = isPR && item.state === "MERGED";
-  const isClosedNotMerged = item.state === "CLOSED";
-
-  const Icon = isMerged
-    ? GitMerge
-    : isPR
-      ? GitPullRequest
-      : isClosedNotMerged
-        ? CircleSlash
-        : CircleDot;
-
-  const iconColor = isMerged
-    ? "text-purple-400"
-    : isClosedNotMerged
-      ? "text-red-400"
-      : "text-emerald-400";
 
   return (
     <a
       href={item.url}
       target="_blank"
       rel="noreferrer noopener"
-      className="flex items-center gap-2 px-3 py-1.5 hover:bg-panel2 border-b border-line text-sm leading-tight"
+      className="grid grid-cols-[32px_34px_58px_minmax(0,1fr)_44px_108px] gap-2 items-center px-3 py-2 border-b border-[rgba(110,150,210,.07)] hover:bg-[rgba(86,200,245,.06)] cursor-pointer"
     >
-      <Icon className={`${iconColor} shrink-0`} size={14} />
-      <span className="font-mono text-xs text-muted shrink-0">#{item.number}</span>
-      <span className="truncate text-fg flex-1">{item.title}</span>
-      <span className="flex items-center gap-1 shrink-0">
-        {status && <Pill kind="status" value={status} />}
-        <AgeBadge updatedAt={statusUpdatedAt} />
-        {priority && <Pill kind="priority" value={priority} />}
-        {size && <Pill kind="size" value={size} />}
+      <PriorityChip value={priority} />
+      <TypeTag contentType={item.contentType} />
+      <span className="font-mono text-[11px] text-number truncate">
+        #{item.number}
       </span>
+      <span className="font-body font-medium text-[13.5px] text-fg truncate">
+        {item.title}
+      </span>
+      <span className="text-right">
+        <AgeBadge updatedAt={statusUpdatedAt} />
+      </span>
+      <StatusDot status={status} />
     </a>
   );
 }

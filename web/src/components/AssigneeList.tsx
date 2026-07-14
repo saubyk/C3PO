@@ -18,7 +18,11 @@ export function AssigneeList({ team, selectedLogin, onSelect }: Props) {
   }, [team.length, focusIdx]);
 
   if (team.length === 0) {
-    return <p className="px-3 py-2 text-xs text-muted">No team members.</p>;
+    return (
+      <p className="px-3.5 py-2 font-mono text-[11px] text-faint uppercase">
+        No team members.
+      </p>
+    );
   }
 
   function handleKey(e: KeyboardEvent<HTMLUListElement>) {
@@ -47,7 +51,7 @@ export function AssigneeList({ team, selectedLogin, onSelect }: Props) {
       tabIndex={0}
       aria-activedescendant={focused ? `assignee-${focused.login}` : undefined}
       onKeyDown={handleKey}
-      className="divide-y divide-line outline-none focus:ring-1 focus:ring-accent"
+      className="outline-none focus:ring-1 focus:ring-accent"
     >
       {team.map((m, i) => {
         const total = m.assignedCount + m.reviewingCount;
@@ -61,17 +65,24 @@ export function AssigneeList({ team, selectedLogin, onSelect }: Props) {
             aria-selected={isSelected}
             onClick={() => onSelect(isSelected ? null : m.login)}
             className={[
-              "flex items-center gap-2 px-3 py-1.5 cursor-pointer",
+              "flex items-center gap-2.5 pl-3 pr-3.5 py-[7px] cursor-pointer",
               "border-l-2",
               isSelected
-                ? "bg-accent/10 border-accent"
-                : "border-transparent hover:bg-panel2",
-              isFocused && !isSelected ? "bg-panel2" : "",
+                ? "bg-[rgba(86,200,245,.09)] border-gold"
+                : "border-transparent hover:bg-[rgba(86,200,245,.07)]",
+              isFocused && !isSelected ? "bg-[rgba(86,200,245,.05)]" : "",
             ].join(" ")}
           >
-            <Avatar user={m} size={20} />
-            <span className="text-sm flex-1 truncate text-fg">{m.login}</span>
-            <span className="text-xs text-muted tabular-nums shrink-0">
+            <Avatar user={m} size={22} />
+            <span
+              className={[
+                "text-[13px] font-medium flex-1 truncate",
+                isSelected ? "text-fg" : "text-body",
+              ].join(" ")}
+            >
+              {m.login}
+            </span>
+            <span className="font-mono text-[10.5px] text-faint tabular-nums shrink-0">
               {total}
             </span>
           </li>

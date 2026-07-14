@@ -31,7 +31,7 @@ export function sortItems(a: ProjectItem, b: ProjectItem): number {
   return b.number - a.number;
 }
 
-function singleSelect(item: ProjectItem, name: string): string | null {
+export function singleSelect(item: ProjectItem, name: string): string | null {
   const v = item.fields[name];
   return v?.kind === "single_select" ? v.optionName : null;
 }
@@ -103,6 +103,41 @@ export function groupByUser(
   return Array.from(groups.values())
     .map((g) => ({ ...g, items: g.items.sort(sortItems) }))
     .sort((a, b) => b.items.length - a.items.length);
+}
+
+// Priority bands used when a single assignee is selected: both columns
+// regroup by priority instead of person. Unknown/missing priority → "none".
+export type PriorityBand = {
+  key: string;
+  label: string;
+  badge: string;
+  color: string;
+};
+
+export const PRIORITY_BANDS: PriorityBand[] = [
+  { key: "P0", label: "P0 · CRITICAL", badge: "P0", color: "#ff6b6b" },
+  { key: "P1", label: "P1 · HIGH", badge: "P1", color: "#f5b83d" },
+  { key: "P2", label: "P2 · ROUTINE", badge: "P2", color: "#7d93b8" },
+  { key: "P3", label: "P3 · LOW", badge: "P3", color: "#5c718f" },
+  { key: "none", label: "UNPRIORITIZED", badge: "·", color: "#3d4f6d" },
+];
+
+export type PriorityGroup = { band: PriorityBand; items: ProjectItem[] };
+
+export function groupByPriority(items: ProjectItem[]): PriorityGroup[] {
+  const buckets = new Map<string, ProjectItem[]>();
+  for (const item of items) {
+    const p = singleSelect(item, "Priority");
+    const key = p && PRIORITY_RANK[p] !== undefined ? p : "none";
+    const arr = buckets.get(key) ?? [];
+    arr.push(item);
+    buckets.set(key, arr);
+  }
+  return PRIORITY_BANDS.flatMap((band) => {
+    const bucket = buckets.get(band.key);
+    if (!bucket || bucket.length === 0) return [];
+    return [{ band, items: bucket.sort(sortItems) }];
+  });
 }
 
 // Derive team list + counts client-side from the (already filtered) items so
