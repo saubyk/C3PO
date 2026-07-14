@@ -19,7 +19,8 @@ type Props = {
 
 // One repo→color mapping shared by both charts (design refinement: the old
 // version colored the same repo differently per chart). Keyed by short repo
-// name; anything unknown gets the fallback steel-blue.
+// name; anything unknown gets a deterministic pastel from its name so
+// unmapped repos never collapse into one indistinguishable color.
 const REPO_COLORS: Record<string, string> = {
   "lightning-infra": "#55d187",
   paymentservice: "#ff7a72",
@@ -30,12 +31,21 @@ const REPO_COLORS: Record<string, string> = {
   btcd: "#e88fc6",
   "lightning-terminal": "#6ee7d0",
   neutrino: "#c9d16b",
+  pool: "#8ea6f0",
+  loop: "#f0a276",
+  btcwallet: "#a3d178",
+  "taproot-assets": "#c48ee8",
+  tap: "#c48ee8", // taproot-assets before the rename
+  "lightning-node-connect": "#eb8fa9",
 };
 
-const REPO_FALLBACK = "#7d93b8";
-
 function repoColor(repo: string): string {
-  return REPO_COLORS[shortenRepo(repo)] ?? REPO_FALLBACK;
+  const short = shortenRepo(repo);
+  const fixed = REPO_COLORS[short];
+  if (fixed) return fixed;
+  let h = 0;
+  for (const ch of short) h = (h * 31 + ch.charCodeAt(0)) % 360;
+  return `hsl(${h}, 55%, 68%)`;
 }
 
 const DRILL_CAP = 12;
