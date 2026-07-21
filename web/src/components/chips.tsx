@@ -1,28 +1,30 @@
 import type { ProjectItem } from "../types";
+import { withAlpha } from "./color";
 
 // Priority chip — the row's primary signal. Fixed-width mono badge.
+// Colors are theme variables so light mode can swap them (index.css).
 const PRIORITY_STYLE: Record<
   string,
   { color: string; border: string; bg: string }
 > = {
   P0: {
-    color: "#ff6b6b",
-    border: "rgba(255,107,107,.55)",
-    bg: "rgba(255,107,107,.12)",
+    color: "var(--color-red)",
+    border: withAlpha("var(--color-red)", 55),
+    bg: withAlpha("var(--color-red)", 12),
   },
   P1: {
-    color: "#f5b83d",
-    border: "rgba(245,184,61,.5)",
-    bg: "rgba(245,184,61,.1)",
+    color: "var(--color-amber)",
+    border: withAlpha("var(--color-amber)", 50),
+    bg: withAlpha("var(--color-amber)", 10),
   },
   P2: {
-    color: "#7d93b8",
-    border: "rgba(125,147,184,.35)",
+    color: "var(--color-prio2)",
+    border: withAlpha("var(--color-prio2)", 35),
     bg: "transparent",
   },
   P3: {
-    color: "#5c718f",
-    border: "rgba(92,113,143,.3)",
+    color: "var(--color-prio3)",
+    border: withAlpha("var(--color-prio3)", 30),
     bg: "transparent",
   },
 };
@@ -35,7 +37,7 @@ export function PriorityChip({ value }: { value: string | null }) {
         aria-hidden={!value}
         title={value ?? "No priority"}
         className="font-mono font-semibold text-[10px] text-center rounded-[3px] py-px"
-        style={{ color: "#3d4f6d" }}
+        style={{ color: "var(--color-prio-none)" }}
       >
         {value ?? "—"}
       </span>
@@ -60,8 +62,16 @@ const TYPE_STYLE: Record<
   ProjectItem["contentType"],
   { label: string; color: string; border: string }
 > = {
-  PullRequest: { label: "PR", color: "#6ee7a0", border: "rgba(110,231,160,.4)" },
-  Issue: { label: "ISS", color: "#5aa2e8", border: "rgba(90,162,232,.4)" },
+  PullRequest: {
+    label: "PR",
+    color: "var(--color-type-pr)",
+    border: withAlpha("var(--color-type-pr)", 40),
+  },
+  Issue: {
+    label: "ISS",
+    color: "var(--color-type-iss)",
+    border: withAlpha("var(--color-type-iss)", 40),
+  },
 };
 
 export function TypeTag({
@@ -82,15 +92,15 @@ export function TypeTag({
 
 // Status — 7px glowing dot + mono label.
 export const STATUS_DOT_COLOR: Record<string, string> = {
-  "In progress": "#55d187",
-  "In review": "#a78bfa",
-  Ready: "#f5b83d",
-  Todo: "#7d93b8",
-  Backlog: "#64789a",
-  Done: "#3a8f61",
+  "In progress": "var(--color-green)",
+  "In review": "var(--color-violet)",
+  Ready: "var(--color-amber)",
+  Todo: "var(--color-prio2)",
+  Backlog: "var(--color-status-backlog)",
+  Done: "var(--color-status-done)",
 };
 
-const STATUS_FALLBACK = "#64789a";
+const STATUS_FALLBACK = "var(--color-status-backlog)";
 
 export function StatusDot({ status }: { status: string | null }) {
   const color = (status && STATUS_DOT_COLOR[status]) || STATUS_FALLBACK;

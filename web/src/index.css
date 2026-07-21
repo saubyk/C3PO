@@ -26,30 +26,87 @@
   --color-amber: #f5b83d;
   --color-stale: #c98a4b;
   --color-eye: #ffd966;
+  /* semantic chip / band colors (light theme overrides these) */
+  --color-prio2: #7d93b8;
+  --color-prio3: #5c718f;
+  --color-prio-none: #3d4f6d;
+  --color-type-pr: #6ee7a0;
+  --color-type-iss: #5aa2e8;
+  --color-status-done: #3a8f61;
+  --color-status-backlog: #64789a;
+  --color-scrollbar-thumb: #1b2a44;
   /* fonts — --font-mono override makes every font-mono usage IBM Plex Mono */
   --font-display: "Chakra Petch", ui-sans-serif, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   --font-body: "Barlow", ui-sans-serif, sans-serif;
 }
 
+/* Console flavor overlays (not Tailwind tokens). */
+:root {
+  --scanline-color: rgba(0, 0, 0, 0.12);
+  --sweep-color: rgba(86, 200, 245, 0.035);
+}
+
+/* Light theme — same protocol-console layout, daylight palette. Toggled by
+   setting data-theme="light" on <html> (see theme.ts); dark is the default
+   and needs no attribute. Un-layered so it beats the @theme layer. */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --color-bg: #e9eef6;
+  --color-panel: #f4f7fb;
+  --color-panel2: #ffffff;
+  --color-raised: #e6ecf5;
+  --color-chrome: #eef2f9;
+  --color-line: rgba(30, 60, 110, 0.14);
+  --color-line2: rgba(30, 60, 110, 0.28);
+  --color-fg: #16202e;
+  --color-body: #3a4c66;
+  --color-muted: #5a6f8f;
+  --color-muted2: #4c6484;
+  --color-faint: #7c8fab;
+  --color-number: #64789a;
+  --color-accent: #0d7fb0;
+  --color-gold: #a67b12;
+  --color-gold-name: #8a6a0c;
+  --color-green: #178a4c;
+  --color-violet: #6d4fd0;
+  --color-red: #d43f3f;
+  --color-amber: #a97908;
+  --color-stale: #a05f22;
+  --color-eye: #b8941f;
+  --color-prio2: #52678a;
+  --color-prio3: #75879f;
+  --color-prio-none: #93a2b8;
+  --color-type-pr: #148554;
+  --color-type-iss: #2b6cb8;
+  --color-status-done: #2c7551;
+  --color-status-backlog: #6c7f9c;
+  --color-scrollbar-thumb: #c1cddd;
+  --scanline-color: rgba(20, 40, 80, 0.045);
+  --sweep-color: rgba(13, 127, 176, 0.04);
+}
+
 @layer base {
+  html {
+    color-scheme: dark;
+  }
+
   html,
   body {
     background-color: var(--color-bg);
     color: var(--color-fg);
-    color-scheme: dark;
     font-family: var(--font-body);
   }
 
   ::selection {
-    background: rgba(86, 200, 245, 0.3);
+    background: color-mix(in srgb, var(--color-accent) 30%, transparent);
   }
 
   ::-webkit-scrollbar {
     width: 10px;
   }
   ::-webkit-scrollbar-thumb {
-    background: #1b2a44;
+    background: var(--color-scrollbar-thumb);
     border-radius: 5px;
     border: 2px solid var(--color-bg);
   }
@@ -64,7 +121,7 @@
 .crt-scanlines {
   background-image: repeating-linear-gradient(
     0deg,
-    rgba(0, 0, 0, 0.12) 0 1px,
+    var(--scanline-color) 0 1px,
     transparent 1px 3px
   );
 }
@@ -83,7 +140,7 @@
   background: linear-gradient(
     to bottom,
     transparent,
-    rgba(86, 200, 245, 0.035),
+    var(--sweep-color),
     transparent
   );
   animation: scan-sweep 9s linear infinite;

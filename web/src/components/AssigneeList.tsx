@@ -68,9 +68,9 @@ export function AssigneeList({ team, selectedLogin, onSelect }: Props) {
               "flex items-center gap-2.5 pl-3 pr-3.5 py-[7px] cursor-pointer",
               "border-l-2",
               isSelected
-                ? "bg-[rgba(86,200,245,.09)] border-gold"
-                : "border-transparent hover:bg-[rgba(86,200,245,.07)]",
-              isFocused && !isSelected ? "bg-[rgba(86,200,245,.05)]" : "",
+                ? "bg-accent/9 border-gold"
+                : "border-transparent hover:bg-accent/7",
+              isFocused && !isSelected ? "bg-accent/5" : "",
             ].join(" ")}
           >
             <Avatar user={m} size={22} />

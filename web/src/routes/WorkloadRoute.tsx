@@ -218,7 +218,7 @@ function ModeButton({
       className={[
         "px-2.5 py-1",
         active
-          ? "bg-[rgba(86,200,245,.15)] text-accent"
+          ? "bg-accent/15 text-accent"
           : "text-faint hover:text-fg",
       ].join(" ")}
     >

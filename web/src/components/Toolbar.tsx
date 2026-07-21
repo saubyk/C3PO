@@ -47,7 +47,7 @@ export function SyncCluster({
         onClick={onRefresh}
         disabled={refreshing || refreshDisabled}
         aria-label={refreshLabel}
-        className="inline-flex items-center gap-1.5 border border-[rgba(86,200,245,.35)] text-accent font-mono text-[11px] rounded px-2 py-1 hover:bg-[rgba(86,200,245,.08)] disabled:opacity-50 disabled:cursor-wait whitespace-nowrap"
+        className="inline-flex items-center gap-1.5 border border-accent/35 text-accent font-mono text-[11px] rounded px-2 py-1 hover:bg-accent/8 disabled:opacity-50 disabled:cursor-wait whitespace-nowrap"
       >
         <span
           aria-hidden="true"

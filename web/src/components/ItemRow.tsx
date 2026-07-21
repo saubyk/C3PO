@@ -15,7 +15,7 @@ export function ItemRow({ item }: { item: ProjectItem }) {
       href={item.url}
       target="_blank"
       rel="noreferrer noopener"
-      className="grid grid-cols-[32px_34px_58px_minmax(0,1fr)_44px_108px] gap-2 items-center px-3 py-2 border-b border-[rgba(110,150,210,.07)] hover:bg-[rgba(86,200,245,.06)] cursor-pointer"
+      className="grid grid-cols-[32px_34px_58px_minmax(0,1fr)_44px_108px] gap-2 items-center px-3 py-2 border-b border-line/60 hover:bg-accent/6 cursor-pointer"
     >
       <PriorityChip value={priority} />
       <TypeTag contentType={item.contentType} />

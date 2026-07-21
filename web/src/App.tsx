@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useHealth } from "./api";
 import { C3POIcon } from "./components/C3POIcon";
+import { useTheme } from "./theme";
 
 // Shared state available to every route via useOutletContext.
 // `boardSelectedLogin` is owned by the Sprint Board route; the Workload route
@@ -20,6 +21,7 @@ export type AppOutletContext = {
 
 export default function App() {
   const { data } = useHealth();
+  const [theme, toggleTheme] = useTheme();
   const login = data?.status === "ok" ? data.login : null;
   const [boardSelectedLogin, setBoardSelectedLogin] = useState<string | null>(
     null,
@@ -41,7 +43,7 @@ export default function App() {
 
   return (
     <main className="h-screen flex flex-col bg-bg text-fg">
-      <nav className="flex items-center gap-5 px-4 h-12 bg-chrome border-b border-[rgba(240,192,90,.22)] shrink-0">
+      <nav className="flex items-center gap-5 px-4 h-12 bg-chrome border-b border-gold/20 shrink-0">
         <span className="flex items-center gap-2.5">
           <span
             aria-hidden="true"
@@ -60,17 +62,30 @@ export default function App() {
         </span>
         <TabLink to="/">Sprint Board</TabLink>
         <TabLink to="/workload">Workload</TabLink>
-        {login && (
-          <span className="ml-auto flex items-center gap-2">
-            <span
-              aria-hidden="true"
-              className="uplink-dot h-[7px] w-[7px] rounded-full bg-green shadow-[0_0_8px_#55d187]"
-            />
-            <span className="font-mono text-[10.5px] text-muted">
-              UPLINK STABLE · @{login}
+        <span className="ml-auto flex items-center gap-4">
+          {login && (
+            <span className="flex items-center gap-2">
+              <span
+                aria-hidden="true"
+                className="uplink-dot h-[7px] w-[7px] rounded-full bg-green shadow-[0_0_8px_#55d187]"
+              />
+              <span className="font-mono text-[10.5px] text-muted">
+                UPLINK STABLE · @{login}
+              </span>
             </span>
-          </span>
-        )}
+          )}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            aria-label={
+              theme === "dark" ? "Switch to light mode" : "Switch to dark mode"
+            }
+            className="inline-flex items-center gap-1.5 border border-line2 rounded px-2 py-[3px] font-mono text-[10px] tracking-[.1em] text-muted hover:text-fg hover:border-accent/60 transition-colors"
+          >
+            <span aria-hidden="true">{theme === "dark" ? "☾" : "☀"}</span>
+            {theme === "dark" ? "DARK" : "LIGHT"}
+          </button>
+        </span>
       </nav>
       <Outlet context={ctx} />
       <footer className="h-[26px] px-4 bg-chrome border-t border-line flex items-center justify-between font-mono text-[9.5px] tracking-[.08em] text-faint uppercase shrink-0 select-none">

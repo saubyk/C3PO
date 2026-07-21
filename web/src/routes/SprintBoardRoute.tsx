@@ -233,7 +233,7 @@ export default function SprintBoardRoute() {
                   <button
                     type="button"
                     onClick={() => setSelectedLogin(null)}
-                    className="block w-[calc(100%-16px)] m-2 px-2 py-1 font-mono text-[10px] text-gold border border-dashed border-[rgba(240,192,90,.5)] rounded hover:bg-gold/10 uppercase tracking-[.06em]"
+                    className="block w-[calc(100%-16px)] m-2 px-2 py-1 font-mono text-[10px] text-gold border border-dashed border-gold/50 rounded hover:bg-gold/10 uppercase tracking-[.06em]"
                   >
                     ✕ CLEAR FILTER · SHOW ALL
                   </button>

@@ -115,11 +115,16 @@ export type PriorityBand = {
 };
 
 export const PRIORITY_BANDS: PriorityBand[] = [
-  { key: "P0", label: "P0 · CRITICAL", badge: "P0", color: "#ff6b6b" },
-  { key: "P1", label: "P1 · HIGH", badge: "P1", color: "#f5b83d" },
-  { key: "P2", label: "P2 · ROUTINE", badge: "P2", color: "#7d93b8" },
-  { key: "P3", label: "P3 · LOW", badge: "P3", color: "#5c718f" },
-  { key: "none", label: "UNPRIORITIZED", badge: "·", color: "#3d4f6d" },
+  { key: "P0", label: "P0 · CRITICAL", badge: "P0", color: "var(--color-red)" },
+  { key: "P1", label: "P1 · HIGH", badge: "P1", color: "var(--color-amber)" },
+  { key: "P2", label: "P2 · ROUTINE", badge: "P2", color: "var(--color-prio2)" },
+  { key: "P3", label: "P3 · LOW", badge: "P3", color: "var(--color-prio3)" },
+  {
+    key: "none",
+    label: "UNPRIORITIZED",
+    badge: "·",
+    color: "var(--color-prio-none)",
+  },
 ];
 
 export type PriorityGroup = { band: PriorityBand; items: ProjectItem[] };

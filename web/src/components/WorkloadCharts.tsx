@@ -170,9 +170,7 @@ function WorkloadPanel({
                       title={d.repo}
                       className={[
                         "w-full grid grid-cols-[8px_auto_1fr_auto] items-center gap-2 px-2 py-[5px] rounded text-left",
-                        isSelected
-                          ? "bg-[rgba(86,200,245,.1)]"
-                          : "hover:bg-[rgba(86,200,245,.07)]",
+                        isSelected ? "bg-accent/10" : "hover:bg-accent/7",
                       ].join(" ")}
                     >
                       <span
@@ -180,7 +178,7 @@ function WorkloadPanel({
                         className="h-2 w-2 rounded-[2px]"
                         style={{ backgroundColor: color }}
                       />
-                      <span className="font-mono text-[11px] text-[#dce6f5] truncate">
+                      <span className="font-mono text-[11px] text-fg truncate">
                         {shortenRepo(d.repo)}
                       </span>
                       <span
@@ -262,7 +260,7 @@ function Donut({
                 key={entry.repo}
                 fill={repoColor(entry.repo)}
                 fillOpacity={dim ? 0.35 : 1}
-                stroke={isSelected ? "#e8eef7" : "var(--color-panel)"}
+                stroke={isSelected ? "var(--color-fg)" : "var(--color-panel)"}
                 strokeWidth={isSelected ? 1.5 : 1}
               />
             );
@@ -271,7 +269,7 @@ function Donut({
         <Tooltip
           contentStyle={{
             backgroundColor: "var(--color-raised)",
-            border: "1px solid rgba(110,150,210,.25)",
+            border: "1px solid var(--color-line2)",
             borderRadius: 4,
             fontFamily: "'IBM Plex Mono', monospace",
             fontSize: 11,
@@ -316,7 +314,7 @@ function DrillDownCard({
   const shown = items.slice(0, DRILL_CAP);
   const more = items.length - shown.length;
   return (
-    <div className="mt-3 border border-[rgba(86,200,245,.25)] rounded-md overflow-hidden">
+    <div className="mt-3 border border-accent/25 rounded-md overflow-hidden">
       <header className="bg-panel2 px-3 py-2 flex items-center gap-2">
         <span
           aria-hidden="true"
@@ -345,7 +343,7 @@ function DrillDownCard({
               href={item.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-center gap-2 px-3 py-1.5 border-t border-line hover:bg-[rgba(86,200,245,.06)]"
+              className="flex items-center gap-2 px-3 py-1.5 border-t border-line hover:bg-accent/6"
             >
               <span
                 aria-hidden="true"
