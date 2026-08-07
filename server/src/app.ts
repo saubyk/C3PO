@@ -3,6 +3,7 @@ import cors from "cors";
 import pino, { type Logger } from "pino";
 import pinoHttp from "pino-http";
 import { createCache, type Cache } from "./cache.js";
+import { configFromEnv, type AppConfig } from "./config/load.js";
 import {
   detectRateLimit,
   describeUpstreamError,
@@ -30,6 +31,10 @@ const TTL_MS = 90_000;
 export type AppDeps = {
   cache?: Cache;
   logger?: Logger;
+  // Resolved by the caller (see config/load.ts) so the app itself never
+  // touches the filesystem — that's what keeps it testable without a config
+  // file on disk. Defaults to the environment alone.
+  config?: AppConfig;
 };
 
 export type TeamMember = User & {
@@ -39,9 +44,19 @@ export type TeamMember = User & {
 
 export function createApp(deps: AppDeps = {}) {
   const cache = deps.cache ?? createCache();
+  const config = deps.config ?? configFromEnv();
   const logger =
     deps.logger ??
     pino({ level: process.env.LOG_LEVEL ?? "info" });
+
+  function requireToken(): string {
+    if (!config.token) {
+      throw new ConfigError(
+        "GITHUB_TOKEN is not set. Add it to .env in the repo root, or to a config file (see README).",
+      );
+    }
+    return config.token;
+  }
 
   const app = express();
   app.use(cors());
@@ -113,11 +128,7 @@ export function createApp(deps: AppDeps = {}) {
       refresh,
       res,
       () =>
-        loadRoster(
-          token,
-          process.env.WORKLOAD_TEAMS,
-          process.env.WORKLOAD_ORGS,
-        ),
+        loadRoster(token, config.workloadTeams, config.workloadOrgs),
     );
     res.json(roster);
   }));
@@ -134,11 +145,7 @@ export function createApp(deps: AppDeps = {}) {
       refresh,
       res,
       () =>
-        loadRoster(
-          token,
-          process.env.WORKLOAD_TEAMS,
-          process.env.WORKLOAD_ORGS,
-        ),
+        loadRoster(token, config.workloadTeams, config.workloadOrgs),
     );
     const workload = await getOrFetch<WorkloadResponse>(
       cache,
@@ -195,16 +202,6 @@ export function createApp(deps: AppDeps = {}) {
 
 class ConfigError extends Error {}
 class BadRequestError extends Error {}
-
-function requireToken(): string {
-  const token = process.env.GITHUB_TOKEN;
-  if (!token) {
-    throw new ConfigError(
-      "GITHUB_TOKEN is not set. Copy .env.example to .env and add a token.",
-    );
-  }
-  return token;
-}
 
 function requireOwnerParam(raw: string | string[] | undefined): string {
   const v = Array.isArray(raw) ? raw[0] : raw;

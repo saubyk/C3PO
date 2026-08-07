@@ -294,6 +294,52 @@ describe("/api/workload/:login", () => {
   });
 });
 
+describe("injected config", () => {
+  it("uses the injected token in preference to the environment", async () => {
+    const app = createApp({
+      cache: createCache(),
+      config: {
+        token: "injected-token",
+        workloadTeams: undefined,
+        workloadOrgs: undefined,
+      },
+    });
+    await request(app).get("/api/projects").expect(200);
+    expect(mockedList).toHaveBeenCalledWith("injected-token");
+  });
+
+  it("forwards injected workload settings to the roster loader", async () => {
+    const app = createApp({
+      cache: createCache(),
+      config: {
+        token: "injected-token",
+        workloadTeams: "org-a/team-one",
+        workloadOrgs: "vendor-org",
+      },
+    });
+    await request(app).get("/api/workload/roster").expect(200);
+    expect(mockedRoster).toHaveBeenCalledWith(
+      "injected-token",
+      "org-a/team-one",
+      "vendor-org",
+    );
+  });
+
+  it("returns 500 with a fix-it message when no token is configured", async () => {
+    const app = createApp({
+      cache: createCache(),
+      config: {
+        token: null,
+        workloadTeams: undefined,
+        workloadOrgs: undefined,
+      },
+    });
+    const res = await request(app).get("/api/projects").expect(500);
+    expect(res.body.error).toMatch(/GITHUB_TOKEN is not set/i);
+    expect(mockedList).not.toHaveBeenCalled();
+  });
+});
+
 describe("error mapping", () => {
   it("translates a GitHub rate-limit error into HTTP 429 with resetAt", async () => {
     const reset = Math.floor(Date.now() / 1000) + 600;

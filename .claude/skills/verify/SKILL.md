@@ -19,6 +19,8 @@ npm start > /tmp/c3po-dev.log 2>&1 &   # server (port 5173) + vite (port 3263)
 ```
 
 Needs the repo's `.env` (GITHUB_TOKEN, WORKLOAD_TEAMS) — already present.
+Settings can also come from `~/.config/c3po/config.json` or `$C3PO_CONFIG`,
+which outrank `.env`; `LOG_LEVEL=debug` prints which layer won.
 Web UI: http://localhost:3263 (proxies `/api` to the server).
 
 ## Drive (headless)

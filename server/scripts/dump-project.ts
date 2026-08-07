@@ -1,13 +1,11 @@
-import dotenv from "dotenv";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
 import { getProjectItems } from "../src/github/projects.js";
-
-// .env lives at repo root, two levels up from server/scripts/.
-const here = dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: resolve(here, "../../.env") });
+import { loadConfig } from "../src/config/load.js";
 
 async function main(): Promise<void> {
+  // Same resolution the server uses: environment → config file → repo .env.
+  const config = loadConfig();
+  for (const warning of config.warnings) console.warn(`[config] ${warning}`);
+
   const owner = process.argv[2];
   const numStr = process.argv[3];
   if (!owner || !numStr) {
@@ -21,9 +19,11 @@ async function main(): Promise<void> {
     console.error(`Invalid project number: ${numStr}`);
     process.exit(2);
   }
-  const token = process.env.GITHUB_TOKEN;
+  const token = config.token;
   if (!token) {
-    console.error("GITHUB_TOKEN is not set. Add it to .env.");
+    console.error(
+      "GITHUB_TOKEN is not set. Add it to .env, or to a config file (see README).",
+    );
     process.exit(2);
   }
 

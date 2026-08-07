@@ -142,14 +142,48 @@ each, with a deterministic name-hashed pastel fallback for unmapped repos.
 
 ## Configuration
 
-`.env` at the repo root (loaded by `server/src/index.ts` regardless of CWD):
+Three settings, resolved **per field** by `server/src/config/load.ts` from
+three layers, highest precedence first: the real process environment → a JSON
+config file (`$C3PO_CONFIG`, else `$XDG_CONFIG_HOME/c3po/config.json`, else
+`~/.config/c3po/config.json`) → `<repo>/.env`.
 
-- `GITHUB_TOKEN` — required. Scopes: `read:project`, `read:org`, plus `repo`
-  for private repos. Never `write:*`/`admin:*`.
-- `WORKLOAD_TEAMS` — `org/team-slug` list; resolves to the Workload roster.
-  Blank leaves the Workload tab an empty placeholder.
-- `WORKLOAD_ORGS` — widens the workload *search scope* only; it does not add
-  anyone to the roster.
+- `GITHUB_TOKEN` / `githubToken` — required. Scopes: `read:project`,
+  `read:org`, plus `repo` for private repos. Never `write:*`/`admin:*`.
+  Can instead be a *pointer* to a file holding only the secret
+  (`GITHUB_TOKEN_FILE` / `githubTokenFile`), which is the recommended setup:
+  settings file ordinary, token file 0600. Within a layer, inline beats
+  pointer (with a warning); a pointer in the config file resolves relative to
+  that file's own directory.
+- `WORKLOAD_TEAMS` / `workloadTeams` — `org/team-slug` list; resolves to the
+  Workload roster. Blank leaves the Workload tab an empty placeholder.
+- `WORKLOAD_ORGS` / `workloadOrgs` — widens the workload *search scope* only;
+  it does not add anyone to the roster.
+
+Rules the layering depends on, easy to break:
+
+- **`createApp()` never touches the filesystem.** It defaults to
+  `configFromEnv()` (pure `process.env`) and takes a resolved `config` as an
+  injectable dep alongside `cache`/`logger` — that's what lets the tests run
+  without a config file existing anywhere. All file I/O lives in `loadConfig()`,
+  called by the three boot entry points: `index.ts` and both dump scripts.
+- **`loadConfig()` must read `process.env` before .env is applied**, or `.env`
+  becomes indistinguishable from the real environment and silently jumps to
+  the top of the precedence order. It snapshots first, then hydrates
+  `process.env` from `.env` at the end (non-overriding) so `PORT` /
+  `LOG_LEVEL` keep working.
+- Blank counts as **unset** at every layer, so the `WORKLOAD_TEAMS=`
+  placeholder shipped in `.env.example` doesn't shadow a real value below it.
+- List settings are normalised to the comma-separated string form so
+  `workload/config.ts` stays the single place that validates them.
+- Config-file problems (missing explicit `C3PO_CONFIG`, bad JSON, wrong types,
+  an unfollowable token pointer, an empty or multi-line token file) throw
+  `ConfigFileError` and **exit 1 at boot**. A token pointer that can't be
+  followed must never fall through to a lower layer — that would silently
+  authenticate you as whoever `.env`'s token belongs to. A merely *absent*
+  token stays a per-request 500, as it always was.
+- `configFromEnv()` deliberately does **not** follow `GITHUB_TOKEN_FILE`:
+  it's the zero-I/O path. Following pointers is `loadConfig()`'s job, and
+  every boot path goes through that.
 
 `docs/sprint-board-requirements.md` carries the FR-numbers referenced in code
 comments (e.g. FR-W4, FR-W10); check there when a comment cites one.

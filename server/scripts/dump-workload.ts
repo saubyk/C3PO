@@ -1,16 +1,10 @@
-import dotenv from "dotenv";
-import { fileURLToPath } from "node:url";
-import { dirname, resolve } from "node:path";
 import {
   parseWorkloadTeams,
   parseWorkloadOrgs,
 } from "../src/workload/config.js";
 import { resolveRoster } from "../src/workload/roster.js";
 import { getDeveloperWorkload } from "../src/workload/developer.js";
-
-// .env lives at repo root, two levels up from server/scripts/.
-const here = dirname(fileURLToPath(import.meta.url));
-dotenv.config({ path: resolve(here, "../../.env") });
+import { loadConfig } from "../src/config/load.js";
 
 async function main(): Promise<void> {
   const login = process.argv[2];
@@ -19,22 +13,28 @@ async function main(): Promise<void> {
     process.exit(2);
   }
 
-  const token = process.env.GITHUB_TOKEN;
+  // Same resolution the server uses: environment → config file → repo .env.
+  const config = loadConfig();
+  for (const warning of config.warnings) console.warn(`[config] ${warning}`);
+
+  const token = config.token;
   if (!token) {
-    console.error("GITHUB_TOKEN is not set. Add it to .env.");
+    console.error(
+      "GITHUB_TOKEN is not set. Add it to .env, or to a config file (see README).",
+    );
     process.exit(2);
   }
 
   const { teams, errors: teamErrors } = parseWorkloadTeams(
-    process.env.WORKLOAD_TEAMS,
+    config.workloadTeams,
   );
   const { orgs: extraOrgs, errors: orgErrors } = parseWorkloadOrgs(
-    process.env.WORKLOAD_ORGS,
+    config.workloadOrgs,
   );
   for (const e of [...teamErrors, ...orgErrors]) console.warn(`[workload] ${e}`);
   if (teams.length === 0 && extraOrgs.length === 0) {
     console.error(
-      "No teams or orgs configured. Set WORKLOAD_TEAMS=<org>/<team-slug>,... and/or WORKLOAD_ORGS=<org>,... in .env.",
+      "No teams or orgs configured. Set WORKLOAD_TEAMS=<org>/<team-slug>,... and/or WORKLOAD_ORGS=<org>,... in .env or your config file.",
     );
     process.exit(2);
   }
